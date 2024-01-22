@@ -5,7 +5,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-#if FB_SONARKIT_ENABLED
+#ifdef FB_SONARKIT_ENABLED
 
 #import "SKComponentLayoutDescriptor.h"
 
@@ -200,7 +200,7 @@ static std::vector<SKAttributeGenerator>& attributeGenerators() {
                forNode:(SKComponentLayoutWrapper*)node {
   SKHighlightOverlay* overlay = [SKHighlightOverlay sharedInstance];
   if (highlighted) {
-    CKComponentViewContext viewContext = node.component.viewContext;
+    const auto viewContext = node.component.viewContext;
     [overlay mountInView:viewContext.view withFrame:viewContext.frame];
   } else {
     [overlay unmount];

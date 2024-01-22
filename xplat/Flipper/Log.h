@@ -8,11 +8,13 @@
 #pragma once
 
 #include <string>
+#include "FlipperLogLevel.h"
 
 namespace facebook {
 namespace flipper {
 
 void log(const std::string& message);
+void log_debug(LogLevel level, const std::string& message);
 
 using LogHandlerFunc = void (*)(const std::string& message);
 

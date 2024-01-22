@@ -5,10 +5,11 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-#if FB_SONARKIT_ENABLED
+#ifdef FB_SONARKIT_ENABLED
 
 #import <FlipperKit/FlipperConnection.h>
 #import <Foundation/Foundation.h>
+#import "UIDConnectionListener.h"
 #import "UIDFrameworkEventManager.h"
 #import "UIDUpdateDigester.h"
 
@@ -32,6 +33,10 @@ NS_ASSUME_NONNULL_BEGIN
 - (instancetype)initWithApplication:(UIApplication*)application
                  descriptorRegister:(UIDDescriptorRegister*)descriptorRegister
                     observerFactory:(UIDTreeObserverFactory*)observerFactory;
+
+- (NSSet<id<UIDConnectionListener>>*)connectionListeners;
+- (void)addConnectionListener:(id<UIDConnectionListener>)listener;
+- (void)removeConnectionListener:(id<UIDConnectionListener>)listener;
 
 @end
 

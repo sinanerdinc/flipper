@@ -3,6 +3,9 @@ id: flipper-plugin
 title: Desktop Plugin API
 ---
 
+import {FbInternalOnly} from 'docusaurus-plugin-internaldocs-fb/internal';
+import Link from '@docusaurus/Link';
+
 `PluginClient` is the type of the `client` passed into a standard Sandy plugin.
 
 It takes two generic arguments:
@@ -311,7 +314,7 @@ client.addMenuEntry({
 }
 ```
 
-The `accelerator` argument is optional but describes the keyboard shortcut. See the [Electron docs](https://www.electronjs.org/docs/api/accelerator) for their format.
+The `accelerator` argument is optional but describes the keyboard shortcut.
 
 It is possible to leave out the `label`, and `accelerator` fields if a pre-defined `action` is set, which configures all three of them.
 The currently pre-defined actions are `"Clear"`, `"Go To Bottom"` and `"Create Paste"`.
@@ -980,6 +983,12 @@ function HighlightedText(props: {text: string}) {
 
 ### TimelineDataDescription
 
+### dataTablePowerSearchOperators
+
+### MasterDetailLegacy
+
+### DataTableLegacy
+
 Coming soon
 
 ### MasterDetail
@@ -1171,6 +1180,7 @@ Valid options are:
 * `buildRow?: (rawData) => row` - a function that can be used to preprocess the incoming data before it is handed off to the table.
 * `renderSidebar?: (row) => React.Element` - a function that can be used to customize how the sidebar is rendered.
 
+### batched
 ### batch
 
 Usage: `batch(() => { /* state updates */ })`
@@ -1374,6 +1384,47 @@ Usage: `isAtom(value)`
 
 Checks if value is an [Atom](https://github.com/facebook/flipper/blob/566f7108c9efd8aefc8522af645bd0674fb91b20/desktop/flipper-plugin/src/state/atom.tsx#L30). Returns boolean.
 
+### reportPluginFailures
+
+Wraps a promise together with a description of the action that's performed and the name of the plugin
+to track success rates and duration of the actions. This is a no-op for the open-source version of Flipper
+as we do not collect any data from users.
+
+Example usage:
+
+```jsx
+import {reportPluginFailures} from 'flipper-plugin';	
+const lastCreatedBisect: PreviousBisects = await reportPluginFailures(
+  graphQLQuery(
+    `query MyQuery {
+      viewer {
+        data (first: 1) {
+          nodes {
+            id
+            date_created
+          }
+        }
+      }
+    }`,
+    60 * 1000,
+  ),
+  'queryMyQuery',
+  'myplugin',
+);
+```
+
+<FbInternalOnly>
+Refer to <Link to="/docs/fb/adding-analytics-0/">the fb-only documentation</Link> for adding analytics to your plugins.
+</FbInternalOnly>
+
+### tryCatchReportPluginFailures
+
+See above for [reportPluginFailures](#reportpluginfailures). This takes a callback and wraps it in a try/catch block instead of expecting a promise.
+
+### tryCatchReportPluginFailuresAsync
+
+Same as [tryCatchReportPluginFailures](#trycatchreportpluginfailures) but for async functions.
+
 ## TestUtils
 
 The object `TestUtils` as exposed from `flipper-plugin` exposes utilities to write unit tests for Sandy plugins.
@@ -1429,7 +1480,7 @@ The following members are only available for Client plugins:
 
 * `sendEvent(event, params)`: Emulates an event being sent by the client plugin. Will trigger the corresponding `onMessage` handler in the plugin.
 * `sendEvents({ method: string, params: object}[])`: Like `sendEvent`, but sends multiple events at once.
-* `onSend`: A `jest.fn()` that can be used to assert that `client.send()` was called by the plugin under test. For example, `expect(runner.onSend).toBeCalledWith('currentLogs`, { since: 0})`.
+* `onSend`: A `jest.fn()` that can be used to assert that `client.send()` was called by the plugin under test. For example, `expect(runner.onSend).toBeCalledWith('currentLogs', { since: 0})`.
 * `connect()`: Triggers the `onConnect()` event. (For non-background plugins `activate()` could as well be used for this).
 * `disconnect()`: Triggers the `onDisconnect()` event. (For non-background plugins `deactivate()` could as well be used for this).
 

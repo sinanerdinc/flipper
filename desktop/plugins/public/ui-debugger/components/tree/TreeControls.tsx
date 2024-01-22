@@ -19,13 +19,16 @@ import {
   Switch,
   Badge,
 } from 'antd';
+// TODO: Fix this the next time the file is edited.
+// eslint-disable-next-line rulesdir/no-restricted-imports-clone, prettier/prettier
+import { Glyph } from 'flipper';
 import {
   EyeOutlined,
   PauseCircleOutlined,
   PlayCircleOutlined,
   SearchOutlined,
 } from '@ant-design/icons';
-import {usePlugin, useValue, Layout} from 'flipper-plugin';
+import {usePlugin, useValue, Layout, theme} from 'flipper-plugin';
 import {FrameworkEventMetadata, FrameworkEventType} from '../../ClientTypes';
 import {
   buildTreeSelectData,
@@ -44,10 +47,17 @@ export const TreeControls: React.FC = () => {
     instance.uiState.frameworkEventMonitoring,
   );
 
-  const frameworkEventMetadata = useValue(instance.frameworkEventMetadata);
-
   const [showFrameworkEventsModal, setShowFrameworkEventsModal] =
     useState(false);
+
+  const frameworkEventMetadata = useValue(instance.frameworkEventMetadata);
+
+  const currentTraversalMode = useValue(instance.uiState.traversalMode);
+  const supportedTraversalModes = useValue(
+    instance.uiState.supportedTraversalModes,
+  );
+
+  const isConnected = useValue(instance.uiState.isConnected);
 
   return (
     <Layout.Horizontal gap="medium" pad="medium">
@@ -69,6 +79,33 @@ export const TreeControls: React.FC = () => {
             {isPaused ? <PlayCircleOutlined /> : <PauseCircleOutlined />}
           </Tooltip>
         }></Button>
+      {supportedTraversalModes.length > 1 &&
+        supportedTraversalModes.includes('accessibility-hierarchy') && (
+          <Tooltip title="Accessibility mode">
+            <Button
+              disabled={!isConnected}
+              shape="circle"
+              onClick={() => {
+                if (currentTraversalMode === 'accessibility-hierarchy') {
+                  instance.uiActions.onSetTraversalMode('view-hierarchy');
+                } else {
+                  instance.uiActions.onSetTraversalMode(
+                    'accessibility-hierarchy',
+                  );
+                }
+              }}>
+              <Glyph
+                name={'accessibility'}
+                size={16}
+                color={
+                  currentTraversalMode === 'accessibility-hierarchy'
+                    ? theme.primaryColor
+                    : theme.textColorPrimary
+                }
+              />
+            </Button>
+          </Tooltip>
+        )}
       {frameworkEventMonitoring.size > 0 && (
         <>
           <Badge
@@ -141,7 +178,7 @@ function FrameworkEventsMonitoringModal({
   return (
     <Modal
       title="Framework event monitoring"
-      visible={visible}
+      open={visible}
       footer={null}
       onCancel={onCancel}>
       <Space direction="vertical" size="large">

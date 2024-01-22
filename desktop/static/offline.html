@@ -36,36 +36,6 @@
       text-align: center;
     }
 
-    .console {
-      font-family: 'Fira Mono';
-      width: 600px;
-      height: 250px;
-      box-sizing: border-box;
-      margin: auto;
-    }
-
-    .console header {
-      border-top-left-radius: 15px;
-      border-top-right-radius: 15px;
-      background-color: #9254de;
-      height: 45px;
-      line-height: 45px;
-      text-align: center;
-      color: white;
-    }
-
-    .console .consolebody {
-      border-bottom-left-radius: 15px;
-      border-bottom-right-radius: 15px;
-      box-sizing: border-box;
-      padding: 0px 10px;
-      height: calc(100% - 40px);
-      overflow: scroll;
-      background-color: #000;
-      color: white;
-      text-align: left;
-    }
-
     input[type="submit"] {
       background-color: #9254de;
       color: white;
@@ -85,6 +55,12 @@
       background-color: #722ed1;
     }
 
+    input[type="submit"]:disabled {
+      background-color: gray;
+      color: lightgray;
+      cursor: not-allowed;
+    }
+
   </style>
 </head>
 
@@ -94,29 +70,37 @@
       <b>Flipper is not running in the background</b>
 
       <p>It can be started by clicking the button below.</p>
-      <form action="flipper-launcher://start-server">
-        <input type="submit" value="Start" />
+      <form action="flipper-launcher://start-server"  onSubmit="serverStart();">
+        <input id="submit" type="submit" value="Start" />
       </form>
 
       <p>
         Flipper will automatically reload once the connection is re-established.
       </p>
-      <p>If is taking a bit longer than it should, you can manually start Flipper.</p>
-      <p>From the terminal, please run:</p>
-
-      <div class="console">
-        <header>
-          <p>shell</p>
-        </header>
-        <div class="consolebody">
-          <p>> open -a 'Flipper' --args '--server'</p>
-        </div>
-      </div>
+      <p>Note: if is taking a bit longer than it should, you can manually start Flipper by launching it from the <b>Applications</b> folder.</p>
     </div>
 
   </div>
 
   <script>
+    function serverStart() {
+      const button = document.getElementById('submit');
+      if (!button) {
+        return;
+      }
+      button.disabled = true;
+      button.value = 'Starting...';
+
+      // Set a timeout to disable the start button for
+      // a period of 30 seconds. If after 30 seconds, the server
+      // has not loaded, then re-enable it.
+      setTimeout(() => {
+        button.disabled = false;
+        button.value = 'Start';
+
+      }, 30 * 10000);
+    }
+
     // Listen to changes in the network state, reload when online.
     // This handles the case when the device is completely offline
     // i.e. no network connection.

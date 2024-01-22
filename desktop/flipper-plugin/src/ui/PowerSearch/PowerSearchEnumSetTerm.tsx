@@ -9,17 +9,22 @@
 
 import {Select} from 'antd';
 import React from 'react';
+import {EnumLabels} from './PowerSearchConfig';
 
 type PowerSearchEnumSetTermProps = {
   onCancel: () => void;
   onChange: (value: string[]) => void;
-  enumLabels: {[key: string]: string};
+  enumLabels: EnumLabels;
+  defaultValue?: string[];
+  allowFreeform?: boolean;
 };
 
 export const PowerSearchEnumSetTerm: React.FC<PowerSearchEnumSetTermProps> = ({
   onCancel,
   onChange,
   enumLabels,
+  defaultValue,
+  allowFreeform,
 }) => {
   const options = React.useMemo(() => {
     return Object.entries(enumLabels).map(([key, label]) => ({
@@ -29,15 +34,20 @@ export const PowerSearchEnumSetTerm: React.FC<PowerSearchEnumSetTermProps> = ({
   }, [enumLabels]);
 
   const selectValueRef = React.useRef<string[]>();
+  if (defaultValue && !selectValueRef.current) {
+    selectValueRef.current = defaultValue;
+  }
 
   return (
     <Select
-      mode="multiple"
-      autoFocus
+      mode={allowFreeform ? 'tags' : 'multiple'}
+      autoFocus={!defaultValue}
       style={{minWidth: 100}}
       placeholder="..."
       options={options}
-      defaultOpen
+      defaultOpen={!defaultValue}
+      defaultValue={defaultValue}
+      dropdownMatchSelectWidth={false}
       onBlur={() => {
         if (!selectValueRef.current?.length) {
           onCancel();

@@ -5,20 +5,21 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-#if FB_SONARKIT_ENABLED
+#ifdef FB_SONARKIT_ENABLED
 
 #import "FlipperKitUIDebuggerPlugin.h"
-#import <UIKit/UIKit.h>
-
 #import <FlipperKit/FlipperClient.h>
 #import <FlipperKit/FlipperConnection.h>
 #import <FlipperKit/FlipperResponder.h>
+#import <UIKit/UIKit.h>
 
 #import "Core/UIDContext.h"
 
 #import "Descriptors/UIDDescriptorRegister.h"
 #import "Observer/UIDTreeObserverFactory.h"
 #import "Observer/UIDTreeObserverManager.h"
+
+#import "UIDTraversalMode.h"
 
 @implementation FlipperKitUIDebuggerPlugin {
   UIDContext* _context;
@@ -49,13 +50,24 @@
   }
 
   _context.connection = connection;
-
   [[UIDTreeObserverManager shared] startWithContext:_context];
+
+  NSSet<id<UIDConnectionListener>>* connectionListeners =
+      _context.connectionListeners;
+  for (id<UIDConnectionListener> listener in connectionListeners) {
+    [listener onDidConnect];
+  }
 }
 
 - (void)didDisconnect {
   _context.connection = nil;
   [[UIDTreeObserverManager shared] stop];
+
+  NSSet<id<UIDConnectionListener>>* connectionListeners =
+      _context.connectionListeners;
+  for (id<UIDConnectionListener> listener in connectionListeners) {
+    [listener onDidDisconnect];
+  }
 }
 
 @end

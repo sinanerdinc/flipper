@@ -1,3 +1,63 @@
+# 0.245.0 (17/1/2024)
+
+ * [D52601498](https://github.com/facebook/flipper/search?q=D52601498&type=Commits) -  Expose report* functions from flipper-plugin
+ * [D52601722](https://github.com/facebook/flipper/search?q=D52601722&type=Commits) -  logPluginSuccessRate() captures the duration in milliseconds
+
+
+# 0.240.0 (30/11/2023)
+
+ * [D51349212](https://github.com/facebook/flipper/search?q=D51349212&type=Commits) -  UIDebugger - show bloks state & deeplink to bloks debugger
+ * [D51349213](https://github.com/facebook/flipper/search?q=D51349213&type=Commits) -  UIDebugger search now expands matching elements
+ * [D51525419](https://github.com/facebook/flipper/search?q=D51525419&type=Commits) -  Plugin Marketplace now stores a unique ID per build
+ * [D51616454](https://github.com/facebook/flipper/search?q=D51616454&type=Commits) -  Flipper Electron distribution change announcement.
+ * [D51623365](https://github.com/facebook/flipper/search?q=D51623365&type=Commits) -  UIDebugger: Add live editting of attribute on the running app from the side bar. Currently Native android only
+
+
+# 0.239.0 (16/11/2023)
+
+ * [D51346366](https://github.com/facebook/flipper/search?q=D51346366&type=Commits) -  UIDebugger fix issue with scrollbars sometimes appearing in sidebar
+
+
+# 0.238.0 (14/11/2023)
+
+ * [D51199644](https://github.com/facebook/flipper/search?q=D51199644&type=Commits) -  [Logs] Improve power search config to populate dropdown for level, PID & Tag
+ * [D51199783](https://github.com/facebook/flipper/search?q=D51199783&type=Commits) -  [Analytics] Improve power search config to populate dropdown for low cardinality columns
+
+
+# 0.237.0 (10/11/2023)
+
+ * [D51113095](https://github.com/facebook/flipper/search?q=D51113095&type=Commits) -  UIdebugger added powersearch operators to Framework event table
+
+
+# 0.234.0 (1/11/2023)
+
+ * [D50595987](https://github.com/facebook/flipper/search?q=D50595987&type=Commits) -  UIDebugger, new sidebar design
+ * [D50599215](https://github.com/facebook/flipper/search?q=D50599215&type=Commits) -  Android SDK is now built against SDK 34
+
+
+# 0.223.0 (2/10/2023)
+
+ * [D49704398](https://github.com/facebook/flipper/search?q=D49704398&type=Commits) -  UIDebugger: improvements to iOS Accessibility mode
+ * [D49780805](https://github.com/facebook/flipper/search?q=D49780805&type=Commits) -  UIDebugger fix icon for litho event timeline tab
+
+
+# 0.222.0 (25/9/2023)
+
+ * [D49501954](https://github.com/facebook/flipper/search?q=D49501954&type=Commits) -  UIDebugger event debugger - increased highlight time. Nodes get random highlight color
+ * [D49547952](https://github.com/facebook/flipper/search?q=D49547952&type=Commits) -  UIDebugger accessibility mode for iOS launched, look for icon to the right of the search bar
+
+
+# 0.220.0 (18/9/2023)
+
+ * [D49371369](https://github.com/facebook/flipper/search?q=D49371369&type=Commits) -  `yarn start` now launches the in-browser version of Flipper. Use `yarn start-electron` for the old behaviour.
+
+
+# 0.217.0 (13/9/2023)
+
+ * [D46859213](https://github.com/facebook/flipper/search?q=D46859213&type=Commits) -  UI Debugger is now available for Litho in Open Source
+ * [D49183501](https://github.com/facebook/flipper/search?q=D49183501&type=Commits) -  FLIPPER_DISABLE_KEYTAR env var can be used to force in-memory implementation
+
+
 # 0.214.0 (30/8/2023)
 
  * [D48777923](https://github.com/facebook/flipper/search?q=D48777923&type=Commits) -  Show the iOS version of simulators in the launcher window

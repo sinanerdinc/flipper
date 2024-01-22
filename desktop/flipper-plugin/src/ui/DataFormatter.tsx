@@ -15,12 +15,12 @@ import {
 import {Button, Typography} from 'antd';
 import {isPlainObject, padStart} from 'lodash';
 import React, {createElement, Fragment, isValidElement, useState} from 'react';
-import {_tryGetFlipperLibImplementation} from 'flipper-plugin-core';
-import {safeStringify} from 'flipper-plugin-core';
 import {urlRegex} from '../utils/urlRegex';
 import {useTableRedraw} from '../data-source/index';
 import {theme} from './theme';
 import {HighlightManager} from './Highlight';
+import {safeStringify} from '../utils/safeStringify';
+import {tryGetFlipperLibImplementation} from '../plugin/FlipperLib';
 
 /**
  * A Formatter is used to render an arbitrarily value to React. If a formatter returns 'undefined'
@@ -100,11 +100,12 @@ export const DataFormatter = {
       return createElement(
         Fragment,
         undefined,
-        // spreading children avoids the need for keys and reconciles by index
-        ...value.split(urlRegex).map((part, index) =>
+        value.split(urlRegex).map((part, index) =>
           // odd items are the links
           index % 2 === 1 ? (
-            <Typography.Link href={part}>{part}</Typography.Link>
+            <Typography.Link key={index} href={part}>
+              {part}
+            </Typography.Link>
           ) : (
             part
           ),
@@ -196,7 +197,7 @@ export function TruncateHelper({
       <Button
         icon={<CopyOutlined />}
         onClick={() => {
-          _tryGetFlipperLibImplementation()?.writeTextToClipboard(value);
+          tryGetFlipperLibImplementation()?.writeTextToClipboard(value);
         }}
         size="small"
         type="text"

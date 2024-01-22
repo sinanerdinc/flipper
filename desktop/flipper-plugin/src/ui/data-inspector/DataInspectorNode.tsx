@@ -26,10 +26,10 @@ import {getSortedKeys} from './utils';
 import React from 'react';
 import {useHighlighter, HighlightManager} from '../Highlight';
 import {Dropdown, Menu, Tooltip} from 'antd';
-import {_tryGetFlipperLibImplementation} from 'flipper-plugin-core';
-import {safeStringify} from 'flipper-plugin-core';
 import {useInUnitTest} from '../../utils/useInUnitTest';
 import {theme} from '../theme';
+import {tryGetFlipperLibImplementation} from '../../plugin/FlipperLib';
+import {safeStringify} from '../../utils/safeStringify';
 
 export {DataValueExtractor} from './DataPreview';
 
@@ -353,6 +353,8 @@ export const DataInspectorNode: React.FC<DataInspectorProps> = memo(
       [extractValue, diff, depth, path],
     );
     const ancestry = useMemo(
+      // TODO: Fix this the next time the file is edited.
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
       () => (res ? parentAncestry!.concat([res.value]) : []),
       [parentAncestry, res?.value],
     );
@@ -372,6 +374,8 @@ export const DataInspectorNode: React.FC<DataInspectorProps> = memo(
         shouldExpand.current = true;
       } else if (resDiff) {
         shouldExpand.current = isComponentExpanded(
+          // TODO: Fix this the next time the file is edited.
+          // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
           res!.value,
           resDiff.type,
           resDiff.value,
@@ -439,6 +443,8 @@ export const DataInspectorNode: React.FC<DataInspectorProps> = memo(
     const setValue = res.mutable ? setValueProp : null;
     const {value, type, extra} = res;
 
+    // TODO: Fix this the next time the file is edited.
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     if (parentAncestry!.includes(value)) {
       return recursiveMarker;
     }
@@ -583,7 +589,7 @@ export const DataInspectorNode: React.FC<DataInspectorProps> = memo(
     }
 
     function getContextMenu() {
-      const lib = _tryGetFlipperLibImplementation();
+      const lib = tryGetFlipperLibImplementation();
       const extraItems = additionalContextMenuItems
         ? [
             additionalContextMenuItems(parentPath, value, name),
@@ -697,8 +703,8 @@ function dataInspectorPropsAreEqual(
     const path = !nextProps.name
       ? '' // root
       : !nextProps.parentPath.length
-      ? nextProps.name // root element
-      : nextProps.parentPath.join('.') + '.' + nextProps.name;
+        ? nextProps.name // root element
+        : nextProps.parentPath.join('.') + '.' + nextProps.name;
 
     // we are being collapsed
     if (props.expanded[path] !== nextProps.expanded[path]) {

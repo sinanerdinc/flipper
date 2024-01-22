@@ -26,6 +26,11 @@ react-native/package-lock.json
 *.xcworkspace
 **/Pods/
 **/xcuserdata/
+**/idb-applications/
+**/idb-dsyms/
+**/idb-dylibs/
+**/idb-frameworks/
+**/idb-test-bundles/
 
 android/third-party/external/
 
@@ -50,6 +55,7 @@ xplat/build
 
 # Mac OS X
 *.DS_Store
+facebook/flipper-server/Resources/
 
 # Automatically generated
 docs/extending/ui-components.mdx

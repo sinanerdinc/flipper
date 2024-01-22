@@ -7,7 +7,7 @@
  * @format
  */
 
-import {Button, Dropdown, Menu, Slider, Tooltip, Typography} from 'antd';
+import {Button, Dropdown, Slider, Tooltip, Typography} from 'antd';
 import {Layout, produce, theme, usePlugin} from 'flipper-plugin';
 import {ClientNode, Id} from '../../ClientTypes';
 import {plugin} from '../../index';
@@ -67,8 +67,8 @@ export function VisualiserControls({
   const focusToolTip = focusDisabled
     ? 'Select a non leaf node to focus it'
     : focusedNode == null
-    ? 'Focus current node'
-    : 'Remove focus';
+      ? 'Focus current node'
+      : 'Remove focus';
 
   const targetToolTip =
     targetMode.state === 'disabled' ? 'Target Mode' : 'Exit  target mode';
@@ -85,7 +85,6 @@ export function VisualiserControls({
         {targetMode.state === 'selected' && (
           <Slider
             min={0}
-            tooltipVisible={false}
             value={targetMode.sliderPosition}
             max={targetMode.targetedNodes.length - 1}
             onChange={(value) => {

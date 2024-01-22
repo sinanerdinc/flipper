@@ -32,7 +32,6 @@ export interface PluginDetails {
   };
   flipperSDKVersion?: string;
   pluginType?: PluginType;
-  headless?: boolean;
   supportedDevices?: SupportedDevice[];
   supportedApps?: SupportedApp[];
   publishedDocs?: {
@@ -82,6 +81,7 @@ export type ActivatablePluginDetails = InstalledPluginDetails;
 // Describes plugin available for downloading. Until downloaded to the disk it is not available for activation in Flipper.
 export interface DownloadablePluginDetails extends ConcretePluginDetails {
   isActivatable: false;
+  buildId: string;
   downloadUrl: string;
   lastUpdated: Date;
   // Indicates whether plugin should be enabled by default for new users
@@ -169,7 +169,6 @@ function getPluginDetailsV2(packageJson: any): PluginDetails {
     supportedApps: packageJson?.supportedApps,
     engines: packageJson.engines,
     publishedDocs: packageJson.publishedDocs,
-    headless: packageJson.headless,
     deprecated: packageJson.deprecated,
   };
 }

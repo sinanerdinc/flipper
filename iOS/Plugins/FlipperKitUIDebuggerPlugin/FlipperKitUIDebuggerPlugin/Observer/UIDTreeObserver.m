@@ -5,9 +5,10 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-#if FB_SONARKIT_ENABLED
+#ifdef FB_SONARKIT_ENABLED
 
 #import "UIDTreeObserver.h"
+#import "UIDAllyTraversal.h"
 #import "UIDContext.h"
 #import "UIDHierarchyTraversal.h"
 #import "UIDTimeUtilities.h"
@@ -32,6 +33,15 @@
   [self processNode:node withSnapshot:false withContext:context];
 }
 
+- (void)setTraversalMode:(UIDTraversalMode)traversalMode {
+  if (_traversalMode == traversalMode) {
+    return;
+  }
+  _traversalMode = traversalMode;
+  [UIDAllyTraversal setVoiceOverServiceEnabled:traversalMode ==
+                    UIDTraversalModeAccessibilityHierarchy];
+}
+
 - (void)processNode:(id)node
        withSnapshot:(BOOL)snapshot
         withContext:(UIDContext*)context {
@@ -39,15 +49,29 @@
 
   uint64_t t0 = UIDPerformanceNow();
 
-  UIDHierarchyTraversal* traversal = [UIDHierarchyTraversal
-      createWithDescriptorRegister:context.descriptorRegister];
-
   UIDNodeDescriptor* descriptor =
       [context.descriptorRegister descriptorForClass:[node class]];
   UIDNodeDescriptor* rootDescriptor = [context.descriptorRegister
       descriptorForClass:[context.application class]];
 
-  NSArray* nodes = [traversal traverse:node];
+  NSArray* nodes;
+  switch (_traversalMode) {
+    case UIDTraversalModeViewHierarchy: {
+      UIDHierarchyTraversal* const traversal = [UIDHierarchyTraversal
+          createWithDescriptorRegister:context.descriptorRegister];
+      nodes = [traversal traverse:node];
+      break;
+    }
+    case UIDTraversalModeAccessibilityHierarchy: {
+      UIDAllyTraversal* allyTraversal = [[UIDAllyTraversal alloc]
+          initWithDescriptorRegister:context.descriptorRegister];
+      nodes = [allyTraversal traverse:context.application root:node];
+      break;
+    }
+    default:
+      // Unexpected value, abort
+      return;
+  }
 
   uint64_t t1 = UIDPerformanceNow();
 

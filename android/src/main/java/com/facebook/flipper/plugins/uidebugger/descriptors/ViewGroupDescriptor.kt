@@ -11,9 +11,10 @@ import android.os.Build
 import android.view.View
 import android.view.ViewGroup
 import androidx.core.view.ViewGroupCompat
-import com.facebook.flipper.plugins.uidebugger.common.EnumMapping
+import com.facebook.flipper.core.FlipperDynamic
 import com.facebook.flipper.plugins.uidebugger.core.FragmentTracker
 import com.facebook.flipper.plugins.uidebugger.model.*
+import com.facebook.flipper.plugins.uidebugger.util.EnumMapping
 
 object ViewGroupDescriptor : ChainedDescriptor<ViewGroup>() {
 
@@ -54,12 +55,15 @@ object ViewGroupDescriptor : ChainedDescriptor<ViewGroup>() {
           MetadataRegister.TYPE_ATTRIBUTE,
           NAMESPACE,
           "layoutMode",
-          false,
-          LayoutModeMapping.getInspectableValues())
+          mutable = true,
+          LayoutModeMapping.getInspectableValues(),
+      )
   private val ClipChildrenAttributeId =
-      MetadataRegister.register(MetadataRegister.TYPE_ATTRIBUTE, NAMESPACE, "clipChildren")
+      MetadataRegister.register(
+          MetadataRegister.TYPE_ATTRIBUTE, NAMESPACE, "clipChildren", mutable = true)
   private val ClipToPaddingAttributeId =
-      MetadataRegister.register(MetadataRegister.TYPE_ATTRIBUTE, NAMESPACE, "clipToPadding")
+      MetadataRegister.register(
+          MetadataRegister.TYPE_ATTRIBUTE, NAMESPACE, "clipToPadding", mutable = true)
 
   override fun onGetAttributes(
       node: ViewGroup,
@@ -77,5 +81,25 @@ object ViewGroupDescriptor : ChainedDescriptor<ViewGroup>() {
     }
 
     attributeSections[SectionId] = InspectableObject(props)
+  }
+
+  override fun onEditAttribute(
+      node: ViewGroup,
+      metadataPath: List<Metadata>,
+      value: FlipperDynamic,
+      hint: CompoundTypeHint?
+  ) {
+    if (metadataPath.first().id != SectionId) {
+      return
+    }
+
+    when (metadataPath.last().id) {
+      LayoutModeAttributeId ->
+          node.layoutMode = LayoutModeMapping.getEnumValue(value.asString() ?: "unknown")
+      ClipChildrenAttributeId -> node.clipChildren = value.asBoolean()
+      ClipToPaddingAttributeId -> node.clipToPadding = value.asBoolean()
+    }
+    node.forceLayout()
+    node.invalidate()
   }
 }

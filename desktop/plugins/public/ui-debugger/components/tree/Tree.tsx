@@ -7,9 +7,10 @@
  * @format
  */
 
-import {Id, ClientNode} from '../../ClientTypes';
-import {OnSelectNode} from '../../DesktopTypes';
+import {Id, ClientNode, NodeMap, MetadataId, Metadata} from '../../ClientTypes';
+import {Color, OnSelectNode} from '../../DesktopTypes';
 import React, {
+  CSSProperties,
   Ref,
   RefObject,
   useEffect,
@@ -29,13 +30,16 @@ import {
 } from 'flipper-plugin';
 import {plugin} from '../../index';
 import {head, last} from 'lodash';
-import {Badge, Typography} from 'antd';
+import {Badge, Tooltip, Typography} from 'antd';
 
 import {useVirtualizer} from '@tanstack/react-virtual';
 import {ContextMenu} from './ContextMenu';
-import {MillisSinceEpoch, useKeyboardControls} from './useKeyboardControls';
+import {
+  MillisSinceEpoch,
+  useKeyboardControlsCallback,
+} from './useKeyboardControls';
 import {toTreeList} from './toTreeList';
-import {CaretDownOutlined} from '@ant-design/icons';
+import {CaretDownOutlined, WarningOutlined} from '@ant-design/icons';
 
 const {Text} = Typography;
 
@@ -54,11 +58,13 @@ export type TreeNode = ClientNode & {
 };
 export function Tree2({
   nodes,
+  metadata,
   rootId,
   additionalHeightOffset,
 }: {
   additionalHeightOffset: number;
-  nodes: Map<Id, ClientNode>;
+  nodes: NodeMap;
+  metadata: Map<MetadataId, Metadata>;
   rootId: Id;
 }) {
   const instance = usePlugin(plugin);
@@ -122,14 +128,30 @@ export function Tree2({
       return;
     }
     prevSearchTerm.current = searchTerm;
-    const matchingIndexes = findSearchMatchingIndexes(treeNodes, searchTerm);
+    const matchingNodesIds = findMatchingNodes(nodes, searchTerm);
 
-    if (matchingIndexes.length > 0) {
-      rowVirtualizer.scrollToIndex(matchingIndexes[0], {align: 'start'});
+    matchingNodesIds.forEach((id) => {
+      instance.uiActions.ensureAncestorsExpanded(id);
+    });
+
+    if (matchingNodesIds.length > 0) {
+      const firstTreeNode = treeNodes.find(searchPredicate(searchTerm));
+
+      const idx = firstTreeNode?.idx;
+      if (idx != null) {
+        rowVirtualizer.scrollToIndex(idx, {align: 'start'});
+      }
     }
-  }, [rowVirtualizer, searchTerm, treeNodes]);
+  }, [instance.uiActions, nodes, rowVirtualizer, searchTerm, treeNodes]);
 
-  useKeyboardControls(
+  useEffect(() => {
+    //focus tree when an element is selected  via visualuser, keyboard controls are active,
+    //when inputs in the sidebar are focused it will defocus the tree and yield kb controls
+    //to the sidebar
+    grandParentRef.current?.focus();
+  }, [selectedNode]);
+
+  const onKeyDown = useKeyboardControlsCallback(
     treeNodes,
     rowVirtualizer,
     selectedNode?.id,
@@ -151,10 +173,15 @@ export function Tree2({
     if (initialHeightOffset.current == null) {
       //it is important to capture the initial height offset as we dont want to consider them again if elements are added dynamically later
       initialHeightOffset.current =
-        boundingClientRect!!.top +
+        // TODO: Fix this the next time the file is edited.
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+        boundingClientRect!!.top + // TODO: Fix this the next time the file is edited.
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
         (window.innerHeight - boundingClientRect!!.bottom) -
         additionalHeightOffset;
     }
+    // TODO: Fix this the next time the file is edited.
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     parentRef.current!!.style.height = `calc(100vh - ${initialHeightOffset.current}px - ${additionalHeightOffset}px )`;
   }, [additionalHeightOffset]);
 
@@ -215,6 +242,7 @@ export function Tree2({
       text={searchTerm}
       highlightColor={theme.searchHighlightBackground.yellow}>
       <ContextMenu
+        metadata={metadata}
         frameworkEvents={instance.frameworkEvents}
         focusedNodeId={focusedNode}
         hoveredNodeId={hoveredNode}
@@ -227,6 +255,9 @@ export function Tree2({
         onCollapseRecursively={instance.uiActions.onCollapseAllRecursively}
         onExpandRecursively={instance.uiActions.onExpandAllRecursively}>
         <div
+          // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex
+          tabIndex={0} //this is for focusability (to allow keyboard navigation)
+          onKeyDown={onKeyDown}
           //We use this normal divs flexbox sizing to measure how much vertical space we need for the child div
           ref={grandParentRef}
           style={{
@@ -313,8 +344,8 @@ const IndentGuides = React.memo(
           const secondHalf = guide.trimBottom
             ? 'transparent'
             : guide.color === 'primary' && !drawHalfprimary
-            ? theme.primaryColor
-            : secondaryColor;
+              ? theme.primaryColor
+              : secondaryColor;
 
           return (
             <div
@@ -372,7 +403,7 @@ function TreeNodeRow({
   transform: string;
   innerRef: Ref<any>;
   treeNode: TreeNode;
-  highlightedNodes: Set<Id>;
+  highlightedNodes: Map<Id, Color>;
   selectedNode?: Id;
   hoveredNode?: Id;
   isUsingKBToScroll: RefObject<MillisSinceEpoch>;
@@ -409,7 +440,7 @@ function TreeNodeRow({
       />
 
       <TreeNodeContent
-        isHighlighted={highlightedNodes.has(treeNode.id)}
+        highlightColor={highlightedNodes.get(treeNode.id)}
         isSelected={isSelected}
         isHovered={hoveredNode === treeNode.id}
         onMouseEnter={() => {
@@ -484,7 +515,9 @@ function InlineAttributes({attributes}: {attributes: Record<string, string>}) {
     <>
       {Object.entries(attributes ?? {}).map(([key, value]) => (
         <TreeAttributeContainer key={key}>
-          <span style={{color: theme.warningColor}}>{key}</span>
+          <span style={{color: theme.warningColor}}>
+            {highlightManager.render(key)}
+          </span>
           <span>={highlightManager.render(value)}</span>
         </TreeAttributeContainer>
       ))}
@@ -500,8 +533,8 @@ const TreeNodeContent = styled.li<{
   item: TreeNode;
   isHovered: boolean;
   isSelected: boolean;
-  isHighlighted: boolean;
-}>(({item, isHovered, isSelected, isHighlighted}) => ({
+  highlightColor?: string;
+}>(({item, isHovered, isSelected, highlightColor}) => ({
   display: 'flex',
   alignItems: 'center',
   height: TreeItemHeight,
@@ -512,13 +545,15 @@ const TreeNodeContent = styled.li<{
   borderStyle: 'solid',
   overflow: 'hidden',
   whiteSpace: 'nowrap',
-  backgroundColor: isHighlighted
-    ? 'rgba(255,0,0,.3)'
-    : isSelected
-    ? theme.selectionBackgroundColor
-    : isHovered
-    ? theme.backgroundWash
-    : theme.backgroundDefault,
+  opacity: highlightColor != null ? 0.6 : 1,
+  backgroundColor:
+    highlightColor != null
+      ? highlightColor
+      : isSelected
+        ? theme.selectionBackgroundColor
+        : isHovered
+          ? theme.backgroundWash
+          : theme.backgroundDefault,
 }));
 
 function ExpandedIconOrSpace(props: {
@@ -571,59 +606,87 @@ function HighlightedText(props: {text: string}) {
 }
 
 function nodeIcon(node: TreeNode) {
+  const [icon, tooltip] = nodeData(node);
+
+  const iconComp =
+    typeof icon === 'string' ? <NodeIconImage src={icon} /> : icon;
+
+  if (tooltip == null) {
+    return iconComp;
+  } else {
+    return <Tooltip title={tooltip}>{iconComp}</Tooltip>;
+  }
+}
+
+function nodeData(node: TreeNode) {
   if (node.tags.includes('LithoMountable')) {
-    return <NodeIconImage src="icons/litho-logo-blue.png" />;
+    return ['icons/litho-logo-blue.png', 'Litho Mountable (Primitive)'];
   } else if (node.tags.includes('Litho')) {
-    return <NodeIconImage src="icons/litho-logo.png" />;
+    return ['icons/litho-logo.png', 'Litho Component'];
+  } else if (node.tags.includes('Compose')) {
+    return ['icons/compose-logo.png', 'Compose Component'];
   } else if (node.tags.includes('CK')) {
     if (node.tags.includes('iOS')) {
-      return <NodeIconImage src="icons/ck-mounted-logo.png" />;
+      return ['icons/ck-mounted-logo.png', 'CK Mounted Component'];
     }
-    return <NodeIconImage src="icons/ck-logo.png" />;
+    return ['icons/ck-logo.png', 'CK Component'];
   } else if (node.tags.includes('BloksBoundTree')) {
-    return <NodeIconImage src="facebook/bloks-logo-orange.png" />;
+    return ['facebook/bloks-logo-orange.png', 'Bloks Bridged component'];
   } else if (node.tags.includes('BloksDerived')) {
-    return <NodeIconImage src="facebook/bloks-logo-blue.png" />;
+    return ['facebook/bloks-logo-blue.png', 'Bloks Derived (Server) component'];
+  } else if (node.tags.includes('Warning')) {
+    return [
+      <WarningOutlined
+        key="0"
+        style={{...nodeiconStyle, color: theme.errorColor}}
+      />,
+      null,
+    ];
   } else {
-    return (
+    return [
       <div
+        key="0"
         style={{
           height: NodeIconSize,
           width: 0,
           marginRight: IconRightMargin,
         }}
-      />
-    );
+      />,
+      null,
+    ];
   }
 }
 
 const NodeIconSize = 14;
 const IconRightMargin = '4px';
-const NodeIconImage = styled.img({
+const nodeiconStyle: CSSProperties = {
   height: NodeIconSize,
   width: NodeIconSize,
   marginRight: IconRightMargin,
   userSelect: 'none',
-});
+};
+const NodeIconImage = styled.img({...nodeiconStyle});
 
 const renderDepthOffset = 12;
 
-//due to virtualisation the out of the box dom based scrolling doesnt work
-function findSearchMatchingIndexes(
-  treeNodes: TreeNode[],
-  searchTerm: string,
-): number[] {
+function findMatchingNodes(nodes: NodeMap, searchTerm: string): Id[] {
   if (!searchTerm) {
     return [];
   }
-  return treeNodes
-    .map((value, index) => [value, index] as [TreeNode, number])
-    .filter(
-      ([value, _]) =>
-        value.name.toLowerCase().includes(searchTerm) ||
-        Object.values(value.inlineAttributes).find((inlineAttr) =>
-          inlineAttr.toLocaleLowerCase().includes(searchTerm),
-        ),
-    )
-    .map(([_, index]) => index);
+  return [...nodes.values()]
+    .filter(searchPredicate(searchTerm))
+    .map((node) => node.id);
+}
+
+function searchPredicate(
+  searchTerm: string,
+): (node: ClientNode) => string | true | undefined {
+  return (node: ClientNode): string | true | undefined =>
+    node.name.toLowerCase().includes(searchTerm) ||
+    Object.keys(node.inlineAttributes).find((inlineAttr) =>
+      inlineAttr.toLocaleLowerCase().includes(searchTerm),
+    ) ||
+    Object.values(node.inlineAttributes).find((inlineAttr) =>
+      inlineAttr.toLocaleLowerCase().includes(searchTerm),
+    );
 }

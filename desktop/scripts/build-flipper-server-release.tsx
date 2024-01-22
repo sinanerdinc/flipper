@@ -9,7 +9,6 @@
 
 const dotenv = require('dotenv').config();
 import path from 'path';
-import https from 'https';
 import os from 'os';
 import tar from 'tar';
 import {
@@ -27,14 +26,18 @@ import {
   serverDir,
   staticDir,
   rootDir,
+  sonarDir,
 } from './paths';
 import isFB from './isFB';
 import yargs from 'yargs';
 import fs from 'fs-extra';
 import {downloadIcons} from './build-icons';
-import {spawn} from 'promisify-child-process';
+import {spawn, exec as execAsync} from 'promisify-child-process';
 import {homedir} from 'os';
 import {need as pkgFetch} from 'pkg-fetch';
+import {exec} from 'child_process';
+import fetch from '@adobe/node-fetch-retry';
+import plist from 'simple-plist';
 
 // This needs to be tested individually. As of 2022Q2, node17 is not supported.
 const SUPPORTED_NODE_PLATFORM = 'node16';
@@ -52,16 +55,17 @@ enum BuildPlatform {
 const LINUX_STARTUP_SCRIPT = `#!/bin/sh
 THIS_DIR="$( cd "$( dirname "\${BASH_SOURCE[0]}" )" && pwd )"
 cd "$THIS_DIR"
-./node ./server "$@"
+./flipper-runtime ./server "$@"
 `;
 
 const WINDOWS_STARTUP_SCRIPT = `@echo off
 setlocal
 set "THIS_DIR=%~dp0"
 cd /d "%THIS_DIR%"
-node server %*
+flipper-runtime server %*
 `;
 
+// eslint-disable-next-line node/no-sync
 const argv = yargs
   .usage('yarn build-flipper-server [args]')
   .version(false)
@@ -130,7 +134,12 @@ const argv = yargs
       default: false,
     },
     mac: {
-      describe: 'Build a platform-specific bundle for MacOS.',
+      describe: 'Build arm64 and x64 bundles for MacOS.',
+      type: 'boolean',
+      default: false,
+    },
+    'mac-local': {
+      describe: 'Build local architecture bundle for MacOS.',
       type: 'boolean',
       default: false,
     },
@@ -142,9 +151,14 @@ const argv = yargs
     linux: {
       describe: 'Build a platform-specific bundle for Linux.',
     },
+    dmg: {
+      describe: 'Package built server as a DMG file (Only for a MacOS build).',
+      type: 'boolean',
+      default: false,
+    },
   })
   .help()
-  .parse(process.argv.slice(1));
+  .parseSync(process.argv.slice(1));
 
 if (isFB) {
   process.env.FLIPPER_FB = 'true';
@@ -209,7 +223,6 @@ async function copyStaticResources(outDir: string, versionNumber: string) {
 
   console.log(`⚙️  Copying package resources...`);
 
-  // static folder, without the things that are only for Electron
   const packageFilesToCopy = ['README.md', 'server.js', 'lib'];
 
   await Promise.all(
@@ -220,7 +233,6 @@ async function copyStaticResources(outDir: string, versionNumber: string) {
 
   console.log(`⚙️  Copying static resources...`);
 
-  // static folder, without the things that are only for Electron
   const staticsToCopy = [
     'icons',
     'native-modules',
@@ -232,8 +244,8 @@ async function copyStaticResources(outDir: string, versionNumber: string) {
     'icon.png',
     'icon_grey.png',
     'icons.json',
-    'index.web.dev.html',
     'index.web.html',
+    'install_desktop.svg',
     'loading.html',
     'offline.html',
     'service-worker.js',
@@ -266,11 +278,7 @@ async function linkLocalDeps(buildFolder: string) {
   const resolutions = {
     'flipper-doctor': `file:${rootDir}/doctor`,
     'flipper-common': `file:${rootDir}/flipper-common`,
-    'flipper-frontend-core': `file:${rootDir}/flipper-frontend-core`,
-    'flipper-plugin-core': `file:${rootDir}/flipper-plugin-core`,
     'flipper-server-client': `file:${rootDir}/flipper-server-client`,
-    'flipper-server-companion': `file:${rootDir}/flipper-server-companion`,
-    'flipper-server-core': `file:${rootDir}/flipper-server-core`,
     'flipper-pkg-lib': `file:${rootDir}/pkg-lib`,
     'flipper-plugin-lib': `file:${rootDir}/plugin-lib`,
   };
@@ -404,6 +412,18 @@ async function yarnInstall(dir: string) {
   await fs.rm(path.resolve(dir, 'yarn.lock'));
 }
 
+async function stripForwardingToolFromArchive(archive: string): Promise<void> {
+  // Remove package/static/PortForwardingMacApp.app from the tarball.
+  // This is a temporary (Fingers crossed!) hack as npm
+  // doesn't allow packages with symlinks in them.
+  const tmpDir = await fs.mkdtemp('flipper-server-npm-package-');
+  await tar.x({file: archive, cwd: tmpDir});
+  await fs.remove(path.join(tmpDir, 'package/static/PortForwardingMacApp.app'));
+  await tar.c({file: archive, cwd: tmpDir, gzip: true}, ['.']);
+  await fs.remove(tmpDir);
+  console.log('✅  Wrote stripped npm archive for flipper-server: ', archive);
+}
+
 async function buildServerRelease() {
   console.log(`⚙️  Starting build-flipper-server-release`);
   console.dir(argv);
@@ -424,7 +444,7 @@ async function buildServerRelease() {
   await fs.mkdirp(path.join(dir, 'static', 'defaultPlugins'));
 
   await prepareDefaultPlugins(argv.channel === 'insiders');
-  await compileServerMain(false);
+  await compileServerMain();
   await copyStaticResources(dir, versionNumber);
   await linkLocalDeps(dir);
   await downloadIcons(path.join(dir, 'static'));
@@ -438,6 +458,7 @@ async function buildServerRelease() {
   );
   const archive = await packNpmArchive(dir, versionNumber);
   await runPostBuildAction(archive, dir);
+  await stripForwardingToolFromArchive(archive);
 
   const platforms: BuildPlatform[] = [];
   if (argv.linux) {
@@ -447,15 +468,26 @@ async function buildServerRelease() {
     platforms.push(BuildPlatform.MAC_X64);
     platforms.push(BuildPlatform.MAC_AARCH64);
   }
+  if (argv.macLocal) {
+    const architecture = os.arch();
+    console.log(`⚙️  Local architecture: ${architecture}`);
+    if (architecture == 'arm64') {
+      platforms.push(BuildPlatform.MAC_AARCH64);
+    } else {
+      platforms.push(BuildPlatform.MAC_X64);
+    }
+  }
   if (argv.win) {
     platforms.push(BuildPlatform.WINDOWS);
   }
 
-  await Promise.all(
-    platforms.map((platform) =>
-      bundleServerReleaseForPlatform(dir, versionNumber, platform),
-    ),
-  );
+  // Instead of parallel builds, these have to be done sequential.
+  // As we are building a native app, the resulting binary will be
+  // different per platform meaning that there's a risk of overriding
+  // intermediate artefacts if done in parallel.
+  for (const platform of platforms) {
+    await bundleServerReleaseForPlatform(dir, versionNumber, platform);
+  }
 }
 
 function nodeArchFromBuildPlatform(platform: BuildPlatform): string {
@@ -482,16 +514,20 @@ async function download(url: string, dest: string): Promise<void> {
   return new Promise<void>((resolve, reject) => {
     // Then, download the file and save it to the destination path.
     const file: fs.WriteStream = fs.createWriteStream(dest);
-    https
-      .get(url, (response) => {
-        response.pipe(file);
+    fetch(url)
+      .then((response) => {
+        response.body.pipe(file);
+        response.body.on('error', (err) => {
+          throw err;
+        });
         file.on('finish', () => {
           file.close();
-          console.log(`✅  Download successful ${url}.`);
+          console.log(`✅  Download successful ${url} to ${dest}.`);
           resolve();
         });
       })
-      .on('error', (error: Error) => {
+      .catch((error: Error) => {
+        console.log(`❌  Download failed ${url}. Error: ${error}`);
         fs.unlink(dest);
         reject(error);
       });
@@ -504,7 +540,7 @@ async function download(url: string, dest: string): Promise<void> {
  * @param dest - Destination directory for the extracted contents.
  */
 async function unpack(source: string, destination: string) {
-  console.log(`⚙️  Extracting ${source}.`);
+  console.log(`⚙️  Extracting ${source} to ${destination}.`);
 
   try {
     await fs.access(destination, fs.constants.F_OK);
@@ -523,7 +559,7 @@ async function unpack(source: string, destination: string) {
     console.log(`✅  Extraction completed.`);
   } catch (error) {
     console.error(
-      `⚙️  Error found whilst trying to extract '${source}'. Found: ${error}`,
+      `❌  Error found whilst trying to extract '${source}'. Found: ${error}`,
     );
   }
 }
@@ -540,6 +576,40 @@ function nodePlatformFromBuildPlatform(platform: BuildPlatform): string {
     default:
       throw new Error(`Unsupported platform: ${platform}`);
   }
+}
+
+async function setRuntimeAppIcon(binaryPath: string): Promise<void> {
+  console.log(`⚙️  Updating runtime icon for MacOS in ${binaryPath}.`);
+  const iconPath = path.join(staticDir, 'icon.png');
+  const tempRsrcPath = path.join(os.tmpdir(), 'icon.rsrc');
+  const deRezCmd = `DeRez -only icns ${iconPath} > ${tempRsrcPath}`;
+  try {
+    await execAsync(deRezCmd);
+  } catch (err) {
+    console.error(
+      `❌  Error while extracting icon with '${deRezCmd}'. Error: ${err}`,
+    );
+    throw err;
+  }
+  const rezCmd = `Rez -append ${tempRsrcPath} -o ${binaryPath}`;
+  try {
+    await execAsync(rezCmd);
+  } catch (err) {
+    console.error(
+      `❌  Error while setting icon on executable ${binaryPath}. Error: ${err}`,
+    );
+    throw err;
+  }
+  const updateCmd = `SetFile -a C ${binaryPath}`;
+  try {
+    await execAsync(updateCmd);
+  } catch (err) {
+    console.error(
+      `❌  Error while changing icon visibility on ${binaryPath}. Error: ${err}`,
+    );
+    throw err;
+  }
+  console.log(`✅  Updated flipper-runtime icon.`);
 }
 
 async function installNodeBinary(outputPath: string, platform: BuildPlatform) {
@@ -573,8 +643,15 @@ async function installNodeBinary(outputPath: string, platform: BuildPlatform) {
     } catch (err) {}
     if (!cached) {
       // Download node tarball from the distribution site.
+      // If this is not present (due to a node update) follow these steps:
+      // - Update the download URL to `https://nodejs.org/dist/${NODE_VERSION}/${name}.tar.gz`
+      // - Ensure the Xcode developer tools are installed
+      // - Build a full MacOS server release locally using `yarn build:flipper-server --mac`
+      // - Enter the dist folder: dist/flipper-server-mac-aarch64/Flipper.app/Contents/MacOS
+      // - `mkdir bin && cp flipper-runtime bin/node && tar -czvf node-${NODE_VERSION}-darwin-arm64.tar.gz bin`
+      // - Upload the resulting tar ball to the Flipper release page as a new tag: https://github.com/facebook/flipper/releases
       await download(
-        `https://nodejs.org/dist/${NODE_VERSION}/${name}.tar.gz`,
+        `https://github.com/facebook/flipper/releases/download/node-${NODE_VERSION}/${name}.tar.gz`,
         downloadOutputPath,
       );
       // Finally, unpack the tarball to a local folder i.e. outputPath.
@@ -582,8 +659,11 @@ async function installNodeBinary(outputPath: string, platform: BuildPlatform) {
       console.log(`✅  Node successfully downloaded and unpacked.`);
     }
 
-    console.log(`⚙️  Copying node binary from ${nodePath} to ${outputPath}`);
-    await fs.copyFile(nodePath, outputPath);
+    console.log(`⚙️  Moving node binary from ${nodePath} to ${outputPath}`);
+    if (await fs.exists(outputPath)) {
+      await fs.rm(outputPath);
+    }
+    await fs.move(nodePath, outputPath);
   } else {
     console.log(`⚙️  Downloading node version for ${platform} using pkg-fetch`);
     const nodePath = await pkgFetch({
@@ -592,12 +672,67 @@ async function installNodeBinary(outputPath: string, platform: BuildPlatform) {
       nodeRange: SUPPORTED_NODE_PLATFORM,
     });
 
-    console.log(`⚙️  Copying node binary from ${nodePath} to ${outputPath}`);
-    await fs.copyFile(nodePath, outputPath);
+    console.log(`⚙️  Moving node binary from ${nodePath} to ${outputPath}`);
+    if (await fs.exists(outputPath)) {
+      await fs.rm(outputPath);
+    }
+    await fs.move(nodePath, outputPath);
+  }
+
+  if (
+    platform === BuildPlatform.MAC_AARCH64 ||
+    platform === BuildPlatform.MAC_X64
+  ) {
+    if (process.platform === 'darwin') {
+      await setRuntimeAppIcon(outputPath).catch(() => {
+        console.warn('⚠️  Unable to update runtime icon');
+      });
+    } else {
+      console.warn("⚠️  Skipping icon update as it's only supported on macOS");
+    }
   }
 
   // Set +x on the binary as copyFile doesn't maintain the bit.
   await fs.chmod(outputPath, 0o755);
+}
+
+async function createMacDMG(
+  platform: BuildPlatform,
+  outputPath: string,
+  destPath: string,
+) {
+  console.log(`⚙️  Create macOS DMG from: ${outputPath}`);
+
+  const name = `Flipper-server-${platform}.dmg`;
+  const temporaryDirectory = os.tmpdir();
+
+  const dmgOutputPath = path.resolve(temporaryDirectory, name);
+
+  await fs.remove(dmgOutputPath);
+
+  const dmgPath = path.resolve(destPath, name);
+
+  const cmd = `hdiutil create -format UDZO -srcfolder "${outputPath}/" -volname "Flipper" ${dmgOutputPath}`;
+
+  return new Promise<void>((resolve, reject) => {
+    exec(cmd, async (error, _stdout, stderr) => {
+      if (error) {
+        console.error(`❌  Failed to create DMG with error: ${error.message}`);
+        return reject(error);
+      }
+
+      if (stderr) {
+        console.error(`❌  Failed to create DMG with error: ${stderr}`);
+        return reject(new Error(stderr));
+      }
+
+      await fs.move(dmgOutputPath, dmgPath);
+      await fs.remove(outputPath);
+
+      console.log(`✅  DMG successfully created ${dmgPath}`);
+      resolve();
+    });
+  });
 }
 
 async function setUpLinuxBundle(outputDir: string) {
@@ -619,44 +754,139 @@ async function setUpWindowsBundle(outputDir: string) {
 
 async function setUpMacBundle(
   outputDir: string,
+  serverDir: string,
+  platform: BuildPlatform,
   versionNumber: string,
-): Promise<{nodePath: string; resourcesPath: string}> {
+) {
   console.log(`⚙️  Creating Mac bundle in ${outputDir}`);
-  await fs.copy(path.join(staticDir, 'flipper-server-app-template'), outputDir);
 
-  console.log(`⚙️  Writing plist`);
-  const pListPath = path.join(
-    outputDir,
-    'Flipper.app',
-    'Contents',
-    'Info.plist',
-  );
-  const pListContents = await fs.readFile(pListPath, 'utf-8');
-  const updatedPlistContents = pListContents.replace(
-    '{flipper-server-version}',
-    versionNumber,
-  );
-  await fs.writeFile(pListPath, updatedPlistContents, 'utf-8');
+  let serverOutputDir = '';
+  let nodeBinaryFile = '';
 
-  const resourcesOutputDir = path.join(
-    outputDir,
-    'Flipper.app',
-    'Contents',
-    'Resources',
-    'server',
-  );
-  const nodeOutputPath = path.join(
-    outputDir,
-    'Flipper.app',
-    'Contents',
-    'MacOS',
-    'node',
-  );
-  return {resourcesPath: resourcesOutputDir, nodePath: nodeOutputPath};
+  /**
+   * Use the most basic template for MacOS.
+   * - Copy the contents of the template into the output directory.
+   * - Replace the version placeholder value with the actual version.
+   */
+  if (!isFB) {
+    const template = path.join(staticDir, 'flipper-server-app-template');
+    await fs.copy(template, outputDir);
+
+    function replacePropertyValue(
+      obj: any,
+      targetValue: string,
+      replacementValue: string,
+    ): any {
+      if (typeof obj === 'object' && !Array.isArray(obj) && obj !== null) {
+        for (const key in obj) {
+          if (obj.hasOwnProperty(key)) {
+            obj[key] = replacePropertyValue(
+              obj[key],
+              targetValue,
+              replacementValue,
+            );
+          }
+        }
+      } else if (typeof obj === 'string' && obj === targetValue) {
+        obj = replacementValue;
+      }
+      return obj;
+    }
+
+    console.log(`⚙️  Update plist with build information`);
+    const plistPath = path.join(
+      outputDir,
+      'Flipper.app',
+      'Contents',
+      'Info.plist',
+    );
+
+    /* eslint-disable node/no-sync*/
+    const pListContents: Record<any, any> = plist.readFileSync(plistPath);
+    replacePropertyValue(
+      pListContents,
+      '{flipper-server-version}',
+      versionNumber,
+    );
+    plist.writeBinaryFileSync(plistPath, pListContents);
+    /* eslint-enable node/no-sync*/
+
+    serverOutputDir = path.join(
+      outputDir,
+      'Flipper.app',
+      'Contents',
+      'Resources',
+      'server',
+    );
+
+    nodeBinaryFile = path.join(
+      outputDir,
+      'Flipper.app',
+      'Contents',
+      'MacOS',
+      'flipper-runtime',
+    );
+  } else {
+    serverOutputDir = path.join(
+      sonarDir,
+      'facebook',
+      'flipper-server',
+      'Resources',
+      'server',
+    );
+    nodeBinaryFile = path.join(
+      sonarDir,
+      'facebook',
+      'flipper-server',
+      'Resources',
+      'flipper-runtime',
+    );
+  }
+
+  if (await fs.exists(serverOutputDir)) {
+    await fs.rm(serverOutputDir, {recursive: true, force: true});
+  }
+  await fs.mkdirp(serverOutputDir);
+
+  console.log(`⚙️  Copying from ${serverDir} to ${serverOutputDir}`);
+
+  // Copy resources instead of moving. This is because we want to keep the original
+  // files in the right location because they are used whilst bundling for
+  // other platforms.
+  await fs.copy(serverDir, serverOutputDir, {
+    overwrite: true,
+    // We need to preserve symlinks, otherwise signing fails for frameworks that use Versions schema
+    dereference: false,
+  });
+
+  console.log(`⚙️  Downloading compatible node version`);
+  await installNodeBinary(nodeBinaryFile, platform);
+
+  if (isFB) {
+    const {buildFlipperServer} = await import(
+      // @ts-ignore only used inside Meta
+      './fb/build-flipper-server-macos'
+    );
+
+    const outputPath = await buildFlipperServer(versionNumber, false);
+    console.log(
+      `⚙️  Successfully built platform: ${platform}, output: ${outputPath}`,
+    );
+
+    const appPath = path.join(outputDir, 'Flipper.app');
+    await fs.emptyDir(appPath);
+    await fs.copy(outputPath, appPath);
+
+    // const appPath = path.join(outputDir, 'Flipper.app');
+    // if (await fs.exists(appPath)) {
+    //   await fs.rm(appPath, {recursive: true, force: true});
+    // }
+    // await fs.move(outputPath, appPath);
+  }
 }
 
 async function bundleServerReleaseForPlatform(
-  dir: string,
+  bundleDir: string,
   versionNumber: string,
   platform: BuildPlatform,
 ) {
@@ -667,29 +897,40 @@ async function bundleServerReleaseForPlatform(
   );
   await fs.mkdirp(outputDir);
 
-  let outputPaths = {
-    nodePath: path.join(outputDir, 'node'),
-    resourcesPath: outputDir,
-  };
-
   // On the mac, we need to set up a resource bundle which expects paths
   // to be in different places from Linux/Windows bundles.
   if (
     platform === BuildPlatform.MAC_X64 ||
     platform === BuildPlatform.MAC_AARCH64
   ) {
-    outputPaths = await setUpMacBundle(outputDir, versionNumber);
-  } else if (platform === BuildPlatform.LINUX) {
-    await setUpLinuxBundle(outputDir);
-  } else if (platform === BuildPlatform.WINDOWS) {
-    await setUpWindowsBundle(outputDir);
+    await setUpMacBundle(outputDir, bundleDir, platform, versionNumber);
+    if (argv.dmg) {
+      await createMacDMG(platform, outputDir, distDir);
+    }
+  } else {
+    const outputPaths = {
+      nodePath: path.join(outputDir, 'flipper-runtime'),
+      resourcesPath: outputDir,
+    };
+
+    if (platform === BuildPlatform.LINUX) {
+      await setUpLinuxBundle(outputDir);
+    } else if (platform === BuildPlatform.WINDOWS) {
+      await setUpWindowsBundle(outputDir);
+    }
+
+    console.log(
+      `⚙️  Copying from ${bundleDir} to ${outputPaths.resourcesPath}`,
+    );
+    await fs.copy(bundleDir, outputPaths.resourcesPath, {
+      overwrite: true,
+      // We need to preserve symlinks, otherwise signing fails for frameworks that use Versions schema
+      dereference: false,
+    });
+
+    console.log(`⚙️  Downloading compatible node version`);
+    await installNodeBinary(outputPaths.nodePath, platform);
   }
-
-  console.log(`⚙️  Copying from ${dir} to ${outputPaths.resourcesPath}`);
-  await fs.copy(dir, outputPaths.resourcesPath);
-
-  console.log(`⚙️  Downloading compatible node version`);
-  await installNodeBinary(outputPaths.nodePath, platform);
 
   console.log(`✅  Wrote ${platform}-specific server version to ${outputDir}`);
 }

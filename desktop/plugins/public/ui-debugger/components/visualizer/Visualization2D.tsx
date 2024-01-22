@@ -9,7 +9,12 @@
 
 import React, {useEffect, useMemo, useRef, useState} from 'react';
 import {Bounds, Coordinate, Id, ClientNode} from '../../ClientTypes';
-import {NestedNode, OnSelectNode, WireFrameMode} from '../../DesktopTypes';
+import {
+  NestedNode,
+  OnSelectNode,
+  TraversalMode,
+  WireFrameMode,
+} from '../../DesktopTypes';
 
 import {
   produce,
@@ -46,6 +51,7 @@ export const Visualization2D: React.FC<
   const hoveredNodes = useValue(instance.uiState.hoveredNodes);
   const hoveredNodeId = head(hoveredNodes);
   const wireFrameMode = useValue(instance.uiState.wireFrameMode);
+  const traversalMode = useValue(instance.uiState.traversalMode);
 
   const [targetMode, setTargetMode] = useState<TargetModeState>({
     state: 'disabled',
@@ -187,7 +193,7 @@ export const Visualization2D: React.FC<
             height: toPx(focusState.actualRoot.bounds.height),
           } as React.CSSProperties
         }>
-        {hoveredNodeId && (
+        {hoveredNodeId != null && (
           <DelayedHoveredToolTip
             key={hoveredNodeId}
             nodeId={hoveredNodeId}
@@ -201,7 +207,7 @@ export const Visualization2D: React.FC<
             />
           </DelayedHoveredToolTip>
         )}
-        {selectedNodeId && (
+        {selectedNodeId != null && (
           <OverlayBorder
             cursor={overlayCursor}
             type="selected"
@@ -245,6 +251,8 @@ export const Visualization2D: React.FC<
             selectedNode={selectedNodeId?.id}
             node={focusState.focusedRoot}
             onSelectNode={onSelectNode}
+            traversalMode={traversalMode}
+            runThroughIndex={0}
           />
         </div>
       </div>
@@ -275,12 +283,16 @@ function Visualization2DNode({
   selectedNode,
   node,
   onSelectNode,
+  runThroughIndex,
+  traversalMode,
 }: {
   wireframeMode: WireFrameMode;
   isSelectedOrChildOrSelected: boolean;
   selectedNode?: Id;
   node: NestedNode;
   onSelectNode: OnSelectNode;
+  runThroughIndex?: number;
+  traversalMode: TraversalMode;
 }) {
   const instance = usePlugin(plugin);
 
@@ -300,7 +312,7 @@ function Visualization2DNode({
     nestedChildren = node.children;
   }
 
-  const children = nestedChildren.map((child) => (
+  const children = nestedChildren.map((child, index) => (
     <Visualization2DNode
       wireframeMode={wireframeMode}
       selectedNode={selectedNode}
@@ -308,10 +320,12 @@ function Visualization2DNode({
       key={child.id}
       node={child}
       onSelectNode={onSelectNode}
+      runThroughIndex={index + 1}
+      traversalMode={traversalMode}
     />
   ));
 
-  const isHighlighted = useValue(instance.uiState.highlightedNodes).has(
+  const highLightColor = useValue(instance.uiState.highlightedNodes).get(
     node.id,
   );
 
@@ -319,6 +333,7 @@ function Visualization2DNode({
     wireframeMode === 'All' ||
     (wireframeMode === 'SelectedAndChildren' && isSelectedOrChildOrSelected) ||
     (wireframeMode === 'SelectedOnly' && isSelected);
+  const showOrdinalIndices = traversalMode == 'accessibility-hierarchy';
 
   return (
     <div
@@ -332,12 +347,33 @@ function Visualization2DNode({
         top: toPx(node.bounds.y),
         width: toPx(node.bounds.width),
         height: toPx(node.bounds.height),
-        opacity: isHighlighted ? 0.3 : 1,
-        backgroundColor: isHighlighted ? 'red' : 'transparent',
+        opacity: highLightColor != null ? 0.7 : 1,
+        backgroundColor: highLightColor,
       }}>
       {showBorder && <NodeBorder />}
 
       {children}
+      {showOrdinalIndices && (
+        <div
+          style={{
+            position: 'relative',
+            width: '20px',
+            height: '14px',
+            fontFamily: 'monospace',
+            borderRadius: '3px',
+            display: 'flex',
+            textAlign: 'center',
+            alignItems: 'center',
+            justifyContent: 'center',
+            backdropFilter: 'blur(2px)',
+            border: '1px solid #00000081',
+            fontSize: '0.6em',
+            opacity: 0.8,
+            background: 'white',
+          }}>
+          {runThroughIndex}
+        </div>
+      )}
     </div>
   );
 }
@@ -353,7 +389,7 @@ const DelayedHoveredToolTip: React.FC<{
 
   return (
     <Tooltip
-      visible={isVisible}
+      open={isVisible}
       key={nodeId}
       placement="top"
       zIndex={100}
@@ -468,6 +504,8 @@ function toNestedNode(
       name: node.name,
       attributes: node.attributes,
       children: nonNullChildren.map((childId) =>
+        // TODO: Fix this the next time the file is edited.
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
         uiNodeToNestedNode(nodes.get(childId)!),
       ),
       bounds: node.bounds,

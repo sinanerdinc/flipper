@@ -7,10 +7,21 @@
  * @format
  */
 
-import {Atom} from 'flipper-plugin';
-import {debounce} from 'lodash';
-import {ClientNode, FrameworkEventType, Id, SnapshotInfo} from '../ClientTypes';
+import {Atom, PluginClient} from 'flipper-plugin';
+import {debounce, last} from 'lodash';
 import {
+  ClientNode,
+  CompoundTypeHint,
+  Events,
+  FrameworkEventType,
+  Id,
+  Metadata,
+  MetadataId,
+  Methods,
+  SnapshotInfo,
+} from '../ClientTypes';
+import {
+  TraversalMode,
   LiveClientState,
   SelectionSource,
   UIActions,
@@ -26,6 +37,8 @@ export function uiActions(
   nodes: Atom<Map<Id, ClientNode>>,
   snapshot: Atom<SnapshotInfo | null>,
   liveClientData: LiveClientState,
+  client: PluginClient<Events, Methods>,
+  metadata: Atom<Map<MetadataId, Metadata>>,
 ): UIActions {
   const onExpandNode = (node: Id) => {
     uiState.expandedNodes.update((draft) => {
@@ -189,6 +202,60 @@ export function uiActions(
     searchTermUpdatedDebounced(searchTerm);
   };
 
+  const onSetTraversalMode = (newMode: TraversalMode) => {
+    tracker.track('traversal-mode-updated', {mode: newMode});
+    const currentMode = uiState.traversalMode.get();
+    uiState.traversalMode.set(newMode);
+
+    try {
+      client.send('onTraversalModeChange', {mode: newMode});
+    } catch (err) {
+      console.warn('[ui-debugger] Unable to set traversal mode', err);
+      uiState.traversalMode.set(currentMode);
+    }
+  };
+
+  const editClientAttribute = async (
+    nodeId: Id,
+    value: any,
+    metadataIdPath: MetadataId[],
+    compoundTypeHint?: CompoundTypeHint,
+  ): Promise<boolean> => {
+    try {
+      await client.send('editAttribute', {
+        nodeId,
+        value,
+        metadataIdPath,
+        compoundTypeHint,
+      });
+      trackLiveEditDebounced(nodeId, metadataIdPath, value);
+      return true;
+    } catch (error) {
+      console.warn('[ui-debugger] Failed to edit attribute', error);
+      return false;
+    }
+  };
+
+  const trackLiveEditDebounced = debounce(
+    (nodeId: Id, metadataIdPath: MetadataId[], value: any) => {
+      const node = nodes.get().get(nodeId);
+      const attributePath = metadataIdPath.map(
+        (id) => metadata.get().get(id)?.name ?? id.toString(),
+      );
+
+      tracker.track('attribute-editted', {
+        nodeId: nodeId,
+        nodeName: node?.name ?? 'Unknown',
+        attributeName: last(attributePath) ?? 'Unknown',
+        attributePath,
+        value: value,
+        attributeType: (typeof value).toString(),
+        tags: node?.tags ?? [],
+      });
+    },
+    100,
+  );
+
   return {
     onExpandNode,
     onCollapseNode,
@@ -207,5 +274,7 @@ export function uiActions(
     onExpandAllRecursively,
     onCollapseAllRecursively,
     ensureAncestorsExpanded,
+    onSetTraversalMode,
+    editClientAttribute,
   };
 }

@@ -21,6 +21,7 @@ import ensurePluginFoldersWatchable from './ensurePluginFoldersWatchable';
 import {Watchman} from 'flipper-pkg-lib';
 import fs from 'fs-extra';
 
+// eslint-disable-next-line node/no-sync
 const argv = yargs
   .usage('yarn flipper-server [args]')
   .options({
@@ -49,10 +50,15 @@ const argv = yargs
       choices: ['stable', 'insiders'],
       default: 'stable',
     },
+    open: {
+      describe: 'Open Flipper in the default browser after starting',
+      type: 'boolean',
+      default: true,
+    },
   })
   .version('DEV')
   .help()
-  .parse(process.argv.slice(1));
+  .parseSync(process.argv.slice(1));
 
 if (isFB) {
   process.env.FLIPPER_FB = 'true';
@@ -102,8 +108,10 @@ async function copyStaticResources() {
 
 async function restartServer() {
   try {
-    await compileServerMain(true);
-    await launchServer(true, ++startCount === 1); // only open on the first time
+    await compileServerMain();
+    // Only open the UI the first time it runs. Subsequent runs, likely triggered after
+    // saving changes, should just reload the existing UI.
+    await launchServer(true, argv.open && ++startCount === 1);
   } catch (e) {
     console.error(
       chalk.red(
@@ -126,10 +134,6 @@ async function startWatchChanges() {
         'pkg-lib',
         'plugin-lib',
         'flipper-common',
-        'flipper-frontend-core',
-        'flipper-plugin-core',
-        'flipper-server-companion',
-        'flipper-server-core',
         'flipper-server',
       ].map((dir) =>
         watchman.startWatchFiles(
@@ -144,6 +148,11 @@ async function startWatchChanges() {
               '**/.*',
               '**/lib/**/*',
               '**/dist/**/*',
+              '**/idb-applications/**/*',
+              '**/idb-dsyms/**/*',
+              '**/idb-dylibs/**/*',
+              '**/idb-frameworks/**/*',
+              '**/idb-test-bundles/**/*',
             ],
           },
         ),

@@ -7,6 +7,8 @@
  * @format
  */
 
+// TODO: Fix this the next time the file is edited.
+// eslint-disable-next-line rulesdir/no-restricted-imports-clone
 import {
   ManagedTable,
   Text,
@@ -229,10 +231,13 @@ export function Component() {
         <Select
           options={Object.keys(sharedPreferences)
             .sort((a, b) => (a.toLowerCase() > b.toLowerCase() ? 1 : -1))
-            .reduce((obj, item) => {
-              obj[item] = item;
-              return obj;
-            }, {} as Record<string, string>)}
+            .reduce(
+              (obj, item) => {
+                obj[item] = item;
+                return obj;
+              },
+              {} as Record<string, string>,
+            )}
           selected={selectedPreferences}
           onChange={instance.setSelectedPreferences}
         />

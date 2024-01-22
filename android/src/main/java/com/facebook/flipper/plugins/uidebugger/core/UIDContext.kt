@@ -8,15 +8,15 @@
 package com.facebook.flipper.plugins.uidebugger.core
 
 import android.app.Application
+import android.os.Build
+import android.util.Log
 import com.facebook.flipper.core.FlipperConnection
-import com.facebook.flipper.plugins.uidebugger.common.BitmapPool
+import com.facebook.flipper.plugins.uidebugger.LogTag
 import com.facebook.flipper.plugins.uidebugger.descriptors.DescriptorRegister
 import com.facebook.flipper.plugins.uidebugger.model.FrameworkEvent
 import com.facebook.flipper.plugins.uidebugger.model.FrameworkEventMetadata
-import com.facebook.flipper.plugins.uidebugger.observers.TreeObserverFactory
-import com.facebook.flipper.plugins.uidebugger.observers.TreeObserverManager
-import com.facebook.flipper.plugins.uidebugger.scheduler.SharedThrottle
-import com.facebook.flipper.plugins.uidebugger.traversal.PartialLayoutTraversal
+import com.facebook.flipper.plugins.uidebugger.model.TraversalError
+import kotlinx.serialization.json.Json
 
 interface ConnectionListener {
   fun onConnect()
@@ -28,21 +28,38 @@ class UIDContext(
     val applicationRef: ApplicationRef,
     val connectionRef: ConnectionRef,
     val descriptorRegister: DescriptorRegister,
-    val observerFactory: TreeObserverFactory,
     val frameworkEventMetadata: MutableList<FrameworkEventMetadata>,
     val connectionListeners: MutableList<ConnectionListener>,
     private val pendingFrameworkEvents: MutableList<FrameworkEvent>
 ) {
 
-  val layoutTraversal: PartialLayoutTraversal =
-      PartialLayoutTraversal(descriptorRegister, observerFactory)
-
-  val treeObserverManager = TreeObserverManager(this)
-  val sharedThrottle: SharedThrottle = SharedThrottle()
+  val attributeEditor = AttributeEditor(applicationRef, descriptorRegister)
   val bitmapPool = BitmapPool()
+  private val canvasSnapshotter = CanvasSnapshotter(bitmapPool)
+
+  private val snapshotter =
+      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+        ModernPixelCopySnapshotter(bitmapPool, canvasSnapshotter)
+      } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        PixelCopySnapshotter(bitmapPool, applicationRef, canvasSnapshotter)
+      } else {
+        Log.w(
+            LogTag,
+            "Using legacy snapshot mode, use device with API level >=26 to for pixel copy snapshot ")
+        canvasSnapshotter
+      }
+
+  val decorViewTracker: DecorViewTracker = DecorViewTracker(this, snapshotter)
+  val updateQueue: UpdateQueue = UpdateQueue(this)
+  val layoutTraversal: LayoutTraversal = LayoutTraversal(this)
 
   fun addFrameworkEvent(frameworkEvent: FrameworkEvent) {
     synchronized(pendingFrameworkEvents) { pendingFrameworkEvents.add(frameworkEvent) }
+  }
+
+  fun onError(traversalError: TraversalError) {
+    connectionRef.connection?.send(
+        TraversalError.name, Json.encodeToString(TraversalError.serializer(), traversalError))
   }
 
   fun extractPendingFrameworkEvents(): List<FrameworkEvent> {
@@ -63,7 +80,6 @@ class UIDContext(
           ApplicationRef(application),
           ConnectionRef(null),
           descriptorRegister = DescriptorRegister.withDefaults(),
-          observerFactory = TreeObserverFactory.withDefaults(),
           frameworkEventMetadata = mutableListOf(),
           connectionListeners = mutableListOf(),
           pendingFrameworkEvents = mutableListOf())

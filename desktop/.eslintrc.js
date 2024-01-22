@@ -24,7 +24,6 @@ const builtInModules = [
   'flipper-plugin-lib',
   'react',
   'react-dom',
-  'electron',
   'antd',
   'immer',
   '@emotion/styled',
@@ -43,13 +42,6 @@ const prettierConfig = require('./.prettierrc.json');
 // Instead, we create a clone of the "no-restricted-imports" rule and use it to split out restricted imports in two groups: warn and error.
 // https://github.com/eslint/eslint/issues/14061#issuecomment-772490154
 const restrictedImportsUniversalErrorConfig = {
-  paths: [
-    {
-      name: 'electron',
-      message:
-        "Direct imports from 'electron' are deprecated. Most functions can be found in getFlipperLib() from flipper-plugin package instead.",
-    },
-  ],
   patterns: [
     {
       group: ['flipper-plugin/*'],
@@ -60,11 +52,6 @@ const restrictedImportsUniversalErrorConfig = {
       group: ['flipper-common/*'],
       message:
         "Imports from nested flipper-common directories are not allowed. Import from 'flipper-common' module directly. If it is missing an export, add it there.",
-    },
-    {
-      group: ['flipper-ui-core/*'],
-      message:
-        "Imports from nested flipper-ui-core directories are not allowed. Import from 'flipper-ui-core' module directly. If it is missing an export, add it there.",
     },
     {
       group: ['antd/*'],
@@ -90,7 +77,10 @@ const restrictedImportsUniversalErrorConfig = {
 };
 
 module.exports = {
-  parser: 'babel-eslint',
+  parser: '@babel/eslint-parser',
+  parserOptions: {
+    requireConfigFile: false,
+  },
   root: true,
   extends: ['fbjs', 'prettier'],
   plugins: [
@@ -112,7 +102,7 @@ module.exports = {
     'flowtype/use-flow-type': 0,
     'react/react-in-jsx-scope': 0, // not needed with our metro implementation
     // Disallow boolean JSX properties set to true, e.g. `grow={true}`.
-    'react/jsx-boolean-value': ['warn', 'never'],
+    'react/jsx-boolean-value': ['error', 'never'],
     'react-hooks/rules-of-hooks': 'error',
     'react-hooks/exhaustive-deps': 'warn',
     'react/jsx-key': 'error',
@@ -133,19 +123,11 @@ module.exports = {
     'no-unsafe-negation': 2,
     'no-useless-computed-key': 2,
     'no-useless-rename': 2,
-    'no-restricted-properties': [
-      1,
-      {
-        object: 'electron',
-        property: 'remote',
-      },
-    ],
     'no-restricted-imports': [
       'error',
       {
         ...restrictedImportsUniversalErrorConfig,
         paths: [
-          ...restrictedImportsUniversalErrorConfig.paths,
           {
             name: 'flipper',
             message:
@@ -161,9 +143,8 @@ module.exports = {
     'import/no-unresolved': [2, {commonjs: true, amd: true}],
     'node/no-extraneous-import': [2, {allowModules: builtInModules}],
     'node/no-extraneous-require': [2, {allowModules: builtInModules}],
-    'node/no-sync': [1],
+    'node/no-sync': ['error'],
     'flipper/no-relative-imports-across-packages': [2],
-    'flipper/no-electron-remote-imports': [1],
     'flipper/no-console-error-without-context': [2],
     'flipper/no-ts-file-extension': 2,
     'flipper/no-i-prefix-interfaces': 2,
@@ -172,10 +153,10 @@ module.exports = {
 
     // promise rules, see https://github.com/xjamundx/eslint-plugin-promise for details on each of them
     'promise/catch-or-return': 'error',
-    'promise/no-nesting': 'warn',
-    'promise/no-promise-in-callback': 'warn',
-    'promise/no-callback-in-promise': 'warn',
-    'promise/no-return-in-finally': 'warn',
+    'promise/no-nesting': 'error',
+    'promise/no-promise-in-callback': 'error',
+    'promise/no-callback-in-promise': 'error',
+    'promise/no-return-in-finally': 'error',
     'promise/valid-params': 'error',
   },
   settings: {
@@ -202,9 +183,9 @@ module.exports = {
         'no-unused-vars': 0,
         'no-redeclare': 0,
         'no-dupe-class-members': 0,
-        '@typescript-eslint/no-redeclare': 1,
+        '@typescript-eslint/no-redeclare': 'error',
         '@typescript-eslint/no-unused-vars': [
-          1,
+          2,
           {
             ignoreRestSiblings: true,
             varsIgnorePattern: '^_',
@@ -213,24 +194,50 @@ module.exports = {
           },
         ],
         '@typescript-eslint/naming-convention': [
-          2,
+          'error',
+          {
+            selector: 'default',
+            format: ['camelCase'],
+            leadingUnderscore: 'allow',
+            trailingUnderscore: 'allow',
+          },
+          {
+            selector: 'variable',
+            format: ['camelCase', 'UPPER_CASE', 'PascalCase', 'snake_case'],
+            leadingUnderscore: 'allowSingleOrDouble',
+            trailingUnderscore: 'allowSingleOrDouble',
+          },
+          {
+            selector: 'function',
+            format: ['camelCase', 'PascalCase'],
+            leadingUnderscore: 'allow',
+            trailingUnderscore: 'allow',
+          },
           {
             selector: 'typeLike',
             format: ['PascalCase', 'UPPER_CASE'],
             leadingUnderscore: 'allow',
           },
+          {
+            selector: ['property', 'method', 'memberLike', 'parameter'],
+            // do not enforce naming convention for properties
+            // no support for kebab-case
+            format: null,
+          },
+          {
+            selector: 'import',
+            format: ['camelCase', 'PascalCase', 'UPPER_CASE', 'snake_case'],
+          },
         ],
-        '@typescript-eslint/no-non-null-assertion': 'warn',
+        '@typescript-eslint/no-non-null-assertion': 'error',
       },
     },
     {
       files: [
         'plugins/**/*.ts',
         'plugins/**/*.tsx',
-        'flipper-ui-core/**/*.tsx',
         'flipper-common/**/*.tsx',
-        'flipper-frontend-core/**/*.tsx',
-        'flipper-ui-browser/**/*.tsx',
+        'flipper-ui/**/*.tsx',
         'flipper-plugin/**/*.tsx',
       ],
       excludedFiles: [
@@ -243,7 +250,6 @@ module.exports = {
           {
             ...restrictedImportsUniversalErrorConfig,
             paths: [
-              ...restrictedImportsUniversalErrorConfig.paths,
               // Ban Node.js API
               'async_hooks',
               {
@@ -283,7 +289,7 @@ module.exports = {
           },
         ],
         'rulesdir/no-restricted-imports-clone': [
-          'warn',
+          'error',
           {
             paths: [
               {
@@ -301,10 +307,8 @@ module.exports = {
       files: [
         'plugins/**/__tests__/**/*.tsx',
         'plugins/**/__tests__/**/*.ts',
-        'flipper-ui-core/**/__tests__/**/*.tsx',
         'flipper-common/**/__tests__/**/*.tsx',
-        'flipper-frontend-core/**/__tests__/**/*.tsx',
-        'flipper-ui-browser/**/__tests__/**/*.tsx',
+        'flipper-ui/**/__tests__/**/*.tsx',
         'flipper-plugin/**/__tests__/**/*.tsx',
         'plugins/postinstall.tsx',
         // TODO: Remove specific plugin overrides down below
@@ -316,7 +320,7 @@ module.exports = {
           restrictedImportsUniversalErrorConfig,
         ],
         'rulesdir/no-restricted-imports-clone': [
-          'warn',
+          'error',
           {
             paths: [
               {
@@ -327,6 +331,14 @@ module.exports = {
             ],
           },
         ],
+      },
+    },
+    // Overrides for all tests
+    {
+      files: ['**/__tests__/**/*.tsx', '**/__tests__/**/*.ts'],
+      rules: {
+        // ! is allowed within tests.
+        '@typescript-eslint/no-non-null-assertion': 'off',
       },
     },
   ],

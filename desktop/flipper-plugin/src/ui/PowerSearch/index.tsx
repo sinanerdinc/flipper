@@ -8,8 +8,12 @@
  */
 
 import * as React from 'react';
-import {Space} from 'antd';
-import {PowerSearchConfig} from './PowerSearchConfig';
+import {
+  PowerSearchConfig,
+  FieldConfig,
+  OperatorConfig,
+  EnumLabels,
+} from './PowerSearchConfig';
 import {PowerSearchContainer} from './PowerSearchContainer';
 import {
   PowerSearchTermFinder,
@@ -24,25 +28,52 @@ import {
 import {useLatestRef} from '../../utils/useLatestRef';
 import {useUpdateEffect} from 'react-use';
 import {theme} from '../theme';
+import {SearchOutlined} from '@ant-design/icons';
+import {getFlipperLib} from '../../plugin/FlipperLib';
 
-export {PowerSearchConfig};
+export {
+  PowerSearchConfig,
+  EnumLabels,
+  OperatorConfig,
+  FieldConfig,
+  SearchExpressionTerm,
+};
 
 type PowerSearchProps = {
   config: PowerSearchConfig;
+  // Overrides current state of the component with every update.
+  // It is the way to continuously force update the state of the power search externally.
+  // Takes prefernce over `initialSearchExpression`.
+  searchExpression?: SearchExpressionTerm[];
+  // Component stays uncontrolled and maintains its own state.
+  // It is respected only on initialization and any future updates are ignored.
   initialSearchExpression?: SearchExpressionTerm[];
   onSearchExpressionChange: (searchExpression: SearchExpressionTerm[]) => void;
+  onConfirmUnknownOption?: (
+    searchString: string,
+  ) => SearchExpressionTerm | undefined;
 };
 
 const OPTION_KEY_DELIMITER = '::';
 
 export const PowerSearch: React.FC<PowerSearchProps> = ({
   config,
+  searchExpression: searchExpressionExternal,
   initialSearchExpression,
   onSearchExpressionChange,
+  onConfirmUnknownOption,
 }) => {
   const [searchExpression, setSearchExpression] = React.useState<
     IncompleteSearchExpressionTerm[]
-  >(initialSearchExpression ?? []);
+  >(() => {
+    if (searchExpressionExternal) {
+      return searchExpressionExternal;
+    }
+    if (initialSearchExpression) {
+      return initialSearchExpression;
+    }
+    return [];
+  });
 
   const onSearchExpressionChangeLatestRef = useLatestRef(
     onSearchExpressionChange,
@@ -52,8 +83,18 @@ export const PowerSearch: React.FC<PowerSearchProps> = ({
       onSearchExpressionChangeLatestRef.current(
         searchExpression as SearchExpressionTerm[],
       );
+      getFlipperLib().logger.track(
+        'usage',
+        'power-search:search-expression-finalize',
+      );
     }
   }, [searchExpression, onSearchExpressionChangeLatestRef]);
+
+  React.useEffect(() => {
+    if (searchExpressionExternal) {
+      setSearchExpression(searchExpressionExternal);
+    }
+  }, [searchExpressionExternal]);
 
   const options: PowerSearchTermFinderOptionGroup[] = React.useMemo(() => {
     const groupedOptions: PowerSearchTermFinderOptionGroup[] = [];
@@ -79,11 +120,6 @@ export const PowerSearch: React.FC<PowerSearchProps> = ({
     return groupedOptions;
   }, [config.fields]);
 
-  const lastSearchTermHasSearchValue =
-    searchExpression.length > 0
-      ? searchExpression[searchExpression.length - 1].searchValue !== undefined
-      : false;
-
   const searchTermFinderRef = React.useRef<{
     focus: () => void;
     blur: () => void;
@@ -92,42 +128,46 @@ export const PowerSearch: React.FC<PowerSearchProps> = ({
 
   return (
     <PowerSearchContainer>
-      <Space size={[theme.space.tiny, 0]}>
-        {searchExpression.map((searchTerm, i) => {
-          const isLastTerm = i === searchExpression.length - 1;
-
-          return (
-            <PowerSearchTerm
-              key={i.toString()}
-              searchTerm={searchTerm}
-              searchValueRenderer={
-                lastSearchTermHasSearchValue || !isLastTerm ? 'button' : 'input'
-              }
-              onCancel={() => {
-                setSearchExpression((prevSearchExpression) => {
-                  if (prevSearchExpression[i]) {
-                    return [
-                      ...prevSearchExpression.slice(0, i),
-                      ...prevSearchExpression.slice(i + 1),
-                    ];
-                  }
-                  return prevSearchExpression;
-                });
-              }}
-              onFinalize={(finalSearchTerm) => {
-                setSearchExpression((prevSearchExpression) => {
+      <SearchOutlined
+        style={{
+          margin: theme.space.tiny,
+          color: theme.textColorSecondary,
+        }}
+      />
+      {searchExpression.map((searchTerm, i) => {
+        return (
+          <PowerSearchTerm
+            key={JSON.stringify(searchTerm)}
+            searchTerm={searchTerm}
+            onCancel={() => {
+              setSearchExpression((prevSearchExpression) => {
+                if (prevSearchExpression[i]) {
                   return [
                     ...prevSearchExpression.slice(0, i),
-                    finalSearchTerm,
                     ...prevSearchExpression.slice(i + 1),
                   ];
-                });
+                }
+                return prevSearchExpression;
+              });
+            }}
+            onFinalize={(finalSearchTerm) => {
+              setSearchExpression((prevSearchExpression) => {
+                return [
+                  ...prevSearchExpression.slice(0, i),
+                  finalSearchTerm,
+                  ...prevSearchExpression.slice(i + 1),
+                ];
+              });
+              // setTimeout allows antd to clear the search input (default behavior when a predefined option is selected) and prevents onChange from firing twice
+              // Without it, when you enter a value in the enum_set term to filter available options, and then select on the filtered optiong, onChange fires twice.
+              // First, with the selected option. Second, with the search value that you used for filtering.
+              setTimeout(() => {
                 searchTermFinderRef.current?.focus();
-              }}
-            />
-          );
-        })}
-      </Space>
+              });
+            }}
+          />
+        );
+      })}
       <PowerSearchTermFinder
         ref={searchTermFinderRef}
         options={options}
@@ -155,6 +195,21 @@ export const PowerSearch: React.FC<PowerSearchProps> = ({
             );
           });
         }}
+        onConfirmUnknownOption={
+          onConfirmUnknownOption
+            ? (searchString) => {
+                const searchExpressionTerm =
+                  onConfirmUnknownOption(searchString);
+
+                if (searchExpressionTerm) {
+                  setSearchExpression((prevSearchExpression) => [
+                    ...prevSearchExpression,
+                    searchExpressionTerm,
+                  ]);
+                }
+              }
+            : undefined
+        }
       />
     </PowerSearchContainer>
   );

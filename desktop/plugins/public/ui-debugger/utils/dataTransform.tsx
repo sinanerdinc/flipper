@@ -8,13 +8,15 @@
  */
 
 import {
+  ClientNode,
+  Id,
   Inspectable,
   InspectableObject,
   Metadata,
   MetadataId,
 } from '../ClientTypes';
 
-function transformAny(
+export function transformAny(
   metadata: Map<MetadataId, Metadata>,
   inspectable: Inspectable,
 ): any {
@@ -30,6 +32,8 @@ function transformAny(
     case 'enum':
     case 'space':
       return inspectable.value;
+    case 'array':
+      return inspectable.items.map((value) => transformAny(metadata, value));
     case 'object':
       return transformObject(metadata, inspectable);
     default:
@@ -72,4 +76,30 @@ export function transform(
     object[meta.name] = transformObject(metadata, inspectable);
   });
   return object;
+}
+
+export function exportNode(
+  node: ClientNode,
+  metadata: Map<MetadataId, Metadata>,
+  nodes: Map<Id, ClientNode>,
+  recursive: boolean = false,
+): any {
+  const rawExport: any = (node: ClientNode) => {
+    return {
+      ...node,
+      attributes: transform(node.attributes, metadata),
+      children: recursive
+        ? node.children.map((child) => {
+            const childNode = nodes.get(child);
+            if (childNode == null) {
+              throw new Error(`Node ${child} not found`);
+            }
+
+            return rawExport(childNode);
+          })
+        : [],
+    };
+  };
+
+  return JSON.stringify(rawExport(node), null, 2);
 }

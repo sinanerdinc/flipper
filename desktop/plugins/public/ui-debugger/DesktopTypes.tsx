@@ -18,12 +18,18 @@ import {
   ClientNode,
   Metadata,
   SnapshotInfo,
+  MetadataId,
+  CompoundTypeHint,
 } from './ClientTypes';
+import TypedEmitter from 'typed-emitter';
 
 export type LiveClientState = {
   snapshotInfo: SnapshotInfo | null;
   nodes: Map<Id, ClientNode>;
 };
+
+export type MetadataMap = Map<MetadataId, Metadata>;
+export type Color = string;
 
 export type UIState = {
   viewMode: Atom<ViewMode>;
@@ -35,12 +41,15 @@ export type UIState = {
   isContextMenuOpen: Atom<boolean>;
   hoveredNodes: Atom<Id[]>;
   selectedNode: Atom<NodeSelection | undefined>;
-  highlightedNodes: Atom<Set<Id>>;
+  highlightedNodes: Atom<Map<Id, Color>>;
   focusedNode: Atom<Id | undefined>;
   expandedNodes: Atom<Set<Id>>;
   visualiserWidth: Atom<number>;
   frameworkEventMonitoring: Atom<Map<FrameworkEventType, boolean>>;
   filterMainThreadMonitoring: Atom<boolean>;
+
+  supportedTraversalModes: Atom<TraversalMode[]>;
+  traversalMode: Atom<TraversalMode>;
 };
 
 //enumerates the keys of input type and casts each to ReadOnlyAtom, this is so we only expose read only atoms to the UI
@@ -64,6 +73,8 @@ export type NestedNode = {
   tags: Tag[];
   activeChildIdx?: number;
 };
+
+export type TraversalMode = 'view-hierarchy' | 'accessibility-hierarchy';
 
 export type ViewMode =
   | {mode: 'default'}
@@ -105,6 +116,13 @@ export type UIActions = {
   onCollapseAllNonAncestors: (nodeId: Id) => void;
   onCollapseAllRecursively: (nodeId: Id) => void;
   ensureAncestorsExpanded: (nodeId: Id) => void;
+  onSetTraversalMode: (mode: TraversalMode) => void;
+  editClientAttribute: (
+    nodeId: Id,
+    value: any,
+    metadataIdPath: MetadataId[],
+    compoundTypeHint?: CompoundTypeHint,
+  ) => Promise<boolean>;
 };
 
 export type SelectionSource =
@@ -127,13 +145,22 @@ export type StreamState =
       clearCallBack: () => Promise<void>;
     };
 
-export interface StreamInterceptor {
-  transformNodes(
-    nodes: Map<Id, ClientNode>,
-  ): Promise<[Map<Id, ClientNode>, Metadata[]]>;
+export type DesktopFrame = {
+  nodes: Map<Id, ClientNode>;
+  snapshot?: SnapshotInfo;
+  frameTime: number;
+};
 
-  transformMetadata(metadata: Metadata): Promise<Metadata>;
-}
+export type StreamInterceptorEventEmitter = TypedEmitter<{
+  /* one of these event will be emitted when frame comes from client */
+  frameReceived: (frame: DesktopFrame) => void;
+  /* at leat one these events will be emitted in reponse to frame received from client */
+  frameUpdated: (frame: DesktopFrame) => void;
+  /* one of these events will be emitted when metadata comes from client */
+  metadataReceived: (metadata: Metadata[]) => void;
+  /* at leat one these events will be emitted in reponse to frame received from client */
+  metadataUpdated: (metadata: Metadata[]) => void;
+}>;
 
 export class StreamInterceptorError extends Error {
   title: string;

@@ -7,13 +7,43 @@
  * @format
  */
 
+import {TraversalMode} from './DesktopTypes';
+
 export type Events = {
   init: InitEvent;
   subtreeUpdate: SubtreeUpdateEvent;
   frameScan: FrameScanEvent;
+  traversalError: TraversalErrorEvent;
   perfStats: PerfStatsEvent;
   performanceStats: PerformanceStatsEvent;
   metadataUpdate: UpdateMetadataEvent;
+  setTraversalMode: SetTraversalModeEvent;
+};
+
+export type Methods = {
+  onTraversalModeChange(params: {mode: TraversalMode}): Promise<void>;
+  editAttribute(params: {
+    nodeId: Id;
+    value: any;
+    metadataIdPath: MetadataId[];
+    compoundTypeHint?: CompoundTypeHint;
+  }): Promise<void>;
+};
+
+export type CompoundTypeHint =
+  | 'TOP'
+  | 'LEFT'
+  | 'RIGHT'
+  | 'BOTTOM'
+  | 'WIDTH'
+  | 'HEIGHT'
+  | 'X'
+  | 'Y'
+  | 'Z'
+  | 'COLOR';
+
+export type SetTraversalModeEvent = {
+  mode: TraversalMode;
 };
 
 export type FrameScanEvent = {
@@ -21,6 +51,13 @@ export type FrameScanEvent = {
   nodes: ClientNode[];
   snapshot?: SnapshotInfo;
   frameworkEvents?: FrameworkEvent[];
+};
+
+export type TraversalErrorEvent = {
+  nodeName: String;
+  errorType: String;
+  errorMessage: String;
+  stack: String;
 };
 
 /**
@@ -69,6 +106,8 @@ export type FrameworkEvent = {
 export type InitEvent = {
   rootId: Id;
   frameworkEventMetadata?: FrameworkEventMetadata[];
+  supportedTraversalModes?: TraversalMode[];
+  currentTraversalMode?: TraversalMode;
 };
 
 /**
@@ -110,6 +149,10 @@ export type UpdateMetadataEvent = {
   attributeMetadata: Record<MetadataId, Metadata>;
 };
 
+export type UpdateAvailableTraversalModeEvent = {
+  modes: TraversalMode[];
+};
+
 export type ClientNode = {
   id: Id;
   parent?: Id;
@@ -132,6 +175,9 @@ export type Metadata = {
   name: string;
   mutable: boolean;
   customAttributes?: Record<string, string | number>;
+  possibleValues?: Inspectable[];
+  minValue?: number;
+  maxValue?: number;
 };
 
 export type Bounds = {
@@ -183,11 +229,13 @@ export type Tag =
   | 'Android'
   | 'Litho'
   | 'LithoMountable'
+  | 'Compose'
   | 'CK'
   | 'iOS'
   | 'BloksBoundTree'
   | 'BloksDerived'
-  | 'TreeRoot';
+  | 'TreeRoot'
+  | 'Warning';
 
 export type Inspectable =
   | InspectableObject
@@ -202,6 +250,7 @@ export type Inspectable =
   | InspectableSize
   | InspectableBounds
   | InspectableSpaceBox
+  | InspectablePluginDeepLink
   | InspectableUnknown;
 
 export type InspectableText = {
@@ -257,6 +306,13 @@ export type InspectableSpaceBox = {
 export type InspectableObject = {
   type: 'object';
   fields: Record<MetadataId, Inspectable>;
+};
+
+export type InspectablePluginDeepLink = {
+  type: 'pluginDeeplink';
+  label?: string;
+  pluginId: string;
+  deeplinkPayload: unknown;
 };
 
 export type InspectableArray = {

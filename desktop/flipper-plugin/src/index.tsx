@@ -7,15 +7,8 @@
  * @format
  */
 
-import {_setAtomPersistentStorage} from 'flipper-plugin-core';
-_setAtomPersistentStorage(window.localStorage);
-
-export * from 'flipper-plugin-core';
-
 import styledImport from '@emotion/styled';
 export const styled = styledImport;
-
-import './state/batch';
 
 export {useValue} from './state/atom';
 
@@ -37,7 +30,10 @@ export {
 export {Sidebar as _Sidebar} from './ui/Sidebar';
 export {DetailSidebar} from './ui/DetailSidebar';
 export {Toolbar} from './ui/Toolbar';
-export {MasterDetail} from './ui/MasterDetail';
+
+export {MasterDetailWithPowerSearch as MasterDetail} from './ui/MasterDetailWithPowerSearch';
+export {MasterDetailWithPowerSearch as _MasterDetailWithPowerSearch} from './ui/MasterDetailWithPowerSearch';
+export {MasterDetail as MasterDetailLegacy} from './ui/MasterDetail';
 export {CodeBlock} from './ui/CodeBlock';
 
 export {renderReactRoot, _PortalsManager} from './utils/renderReactRoot';
@@ -56,8 +52,22 @@ export {DataFormatter} from './ui/DataFormatter';
 
 export {useLogger, _LoggerContext} from './utils/useLogger';
 
-export {DataTable, DataTableColumn} from './ui/data-table/DataTable';
-export {DataTableManager} from './ui/data-table/DataTableManager';
+export {
+  DataTable,
+  DataTableColumn,
+} from './ui/data-table/DataTableWithPowerSearch';
+export {
+  DataTable as _DataTableWithPowerSearch,
+  DataTableColumn as _DataTableColumnWithPowerSearch,
+} from './ui/data-table/DataTableWithPowerSearch';
+export {
+  DataTable as DataTableLegacy,
+  DataTableColumn as DataTableColumnLegacy,
+} from './ui/data-table/DataTable';
+export {DataTableManager} from './ui/data-table/DataTableWithPowerSearchManager';
+export {DataTableManager as _DataTableWithPowerSearchManager} from './ui/data-table/DataTableWithPowerSearchManager';
+export {DataTableManager as DataTableManagerLegacy} from './ui/data-table/DataTableManager';
+export {dataTablePowerSearchOperators} from './ui/data-table/DataTableDefaultPowerSearchOperators';
 export {DataList} from './ui/DataList';
 export {Spinner} from './ui/Spinner';
 export * from './ui/PowerSearch';
@@ -114,3 +124,92 @@ export {textContent} from './utils/textContent';
 // Probably we should make sure that testing-library doesn't end up in our final Flipper bundle (which packages flipper-plugin)
 // T69106962
 export const TestUtils = TestUtilites;
+
+export {produce, Draft} from 'immer';
+
+export {
+  SandyPluginInstance as _SandyPluginInstance,
+  PluginClient,
+  PluginFactory as _PluginFactory,
+  RealFlipperClient as _RealFlipperClient,
+} from './plugin/Plugin';
+export {
+  Device,
+  DeviceLogListener,
+  DevicePluginClient,
+  CrashLogListener,
+  SandyDevicePluginInstance as _SandyDevicePluginInstance,
+  DevicePluginFactory as _DevicePluginFactory,
+} from './plugin/DevicePlugin';
+export {
+  SandyPluginDefinition as _SandyPluginDefinition,
+  FlipperPluginInstance,
+  FlipperPluginModule as _FlipperPluginModule,
+  FlipperDevicePluginModule as _FlipperDevicePluginModule,
+} from './plugin/SandyPluginDefinition';
+
+export {
+  DataSource,
+  DataSourceView as _DataSourceView,
+  DataSourceOptionKey as _DataSourceOptionKey,
+  DataSourceOptions as _DataSourceOptions,
+} from './data-source/DataSource';
+export {createDataSource} from './state/createDataSource';
+
+export {
+  createState,
+  Atom,
+  isAtom,
+  ReadOnlyAtom as _ReadOnlyAtom,
+  AtomValue as _AtomValue,
+} from './state/atom';
+export {batched, batch} from './state/batch';
+export {
+  FlipperLib,
+  getFlipperLib,
+  setFlipperLibImplementation as _setFlipperLibImplementation,
+  tryGetFlipperLibImplementation as _tryGetFlipperLibImplementation,
+  FileDescriptor,
+  FileEncoding,
+  RemoteServerContext,
+  DownloadFileResponse,
+} from './plugin/FlipperLib';
+export {
+  MenuEntry,
+  NormalizedMenuEntry,
+  buildInMenuEntries as _buildInMenuEntries,
+  DefaultKeyboardAction,
+} from './plugin/MenuEntry';
+export {Notification} from './plugin/Notification';
+export {CreatePasteArgs, CreatePasteResult} from './plugin/Paste';
+
+export {Idler} from './utils/Idler';
+
+export {
+  makeShallowSerializable as _makeShallowSerializable,
+  deserializeShallowObject as _deserializeShallowObject,
+} from './utils/shallowSerialization';
+
+import * as path from './utils/path';
+export {path};
+export {safeStringify} from './utils/safeStringify';
+export {stubLogger as _stubLogger} from './utils/Logger';
+
+export {
+  sleep,
+  timeout,
+  createControlledPromise,
+  uuid,
+  reportPluginFailures,
+  tryCatchReportPluginFailures,
+  tryCatchReportPluginFailuresAsync,
+  DeviceOS,
+  DeviceType,
+  DeviceLogEntry,
+  DeviceLogLevel,
+  Logger,
+  CrashLog,
+  ServerAddOn,
+  ServerAddOnPluginConnection,
+  FlipperServerForServerAddOn,
+} from 'flipper-common';

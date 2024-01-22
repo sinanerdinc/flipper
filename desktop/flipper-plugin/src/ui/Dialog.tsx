@@ -8,8 +8,7 @@
  */
 
 import {Alert, ButtonProps, Input, Modal, Radio, Space, Typography} from 'antd';
-import {createState} from 'flipper-plugin-core';
-import {useValue} from '../state/atom';
+import {createState, useValue} from '../state/atom';
 import React from 'react';
 import {renderReactRoot} from '../utils/renderReactRoot';
 import {Layout} from './Layout';
@@ -59,14 +58,16 @@ export const Dialog = {
           return (
             <Modal
               title={opts.title}
-              visible
+              open
               okText={opts.okText}
               cancelText={opts.cancelText}
               onOk={async () => {
                 try {
                   const value = opts.onConfirm
                     ? await opts.onConfirm(currentValue)
-                    : currentValue!;
+                    : // TODO: Fix this the next time the file is edited.
+                      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+                      currentValue!;
                   onHide();
                   resolve(value);
                 } catch (e) {
@@ -280,7 +281,7 @@ export const Dialog = {
           return (
             <Modal
               title={title ?? 'Loading...'}
-              visible
+              open
               footer={null}
               width={width ?? defaultWidth}
               closable={false}>

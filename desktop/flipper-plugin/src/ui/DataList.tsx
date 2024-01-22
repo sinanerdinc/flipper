@@ -22,8 +22,8 @@ import {theme} from './theme';
 import styled from '@emotion/styled';
 import {DataTableManager} from './data-table/DataTableManager';
 import {useAssertStableRef} from '../utils/useAssertStableRef';
-import {DataSource} from 'flipper-plugin-core';
 import {useMakeStableCallback} from '../utils/useMakeStableCallback';
+import {DataSource} from '../data-source/index';
 
 const {Text} = Typography;
 
@@ -108,6 +108,8 @@ export const DataList: (<T extends object>(
         if (!item) {
           onSelect?.(undefined, undefined);
         } else {
+          // TODO: Fix this the next time the file is edited.
+          // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
           const id = '' + item[idAttribute!];
           if (id == null) {
             throw new Error(`No valid identifier for attribute ${idAttribute}`);
@@ -129,6 +131,8 @@ export const DataList: (<T extends object>(
     const dataListColumns: DataTableColumn<T>[] = useMemo(
       () => [
         {
+          // TODO: Fix this the next time the file is edited.
+          // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
           key: idAttribute!,
           wrap: true,
           onRender(item: T, selected: boolean, index: number) {
@@ -136,7 +140,11 @@ export const DataList: (<T extends object>(
               onRenderItem(item, selected, index)
             ) : (
               <DataList.Item
+                // TODO: Fix this the next time the file is edited.
+                // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
                 title={item[titleAttribute!] as any}
+                // TODO: Fix this the next time the file is edited.
+                // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
                 description={item[descriptionAttribute!] as any}
                 enableArrow={enableArrow}
               />
@@ -158,7 +166,11 @@ export const DataList: (<T extends object>(
         <DataTable<T>
           {...tableProps}
           tableManagerRef={tableManagerRef}
+          // TODO: Fix this the next time the file is edited.
+          // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
           records={Array.isArray(items) ? items : undefined!}
+          // TODO: Fix this the next time the file is edited.
+          // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
           dataSource={Array.isArray(items) ? undefined! : (items as any)}
           recordsKey={idAttribute}
           columns={dataListColumns}

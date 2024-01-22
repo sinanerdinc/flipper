@@ -11,9 +11,10 @@ import {DeleteOutlined, PartitionOutlined} from '@ant-design/icons';
 import {
   DataTable,
   DataTableColumn,
-  DataTableManager,
   DetailSidebar,
   Layout,
+  DataTableManager,
+  dataTablePowerSearchOperators,
   usePlugin,
   useValue,
 } from 'flipper-plugin';
@@ -23,7 +24,7 @@ import {plugin} from '../index';
 import {Button, Result, Tooltip} from 'antd';
 import {AugmentedFrameworkEvent} from '../DesktopTypes';
 import {formatDuration, formatTimestampMillis} from '../utils/timeUtils';
-import {eventTypeToName} from './sidebar/inspector/FrameworkEventsInspector';
+import {eventTypeToName} from './sidebarV2/frameworkevents/FrameworkEventsInspector';
 import {startCase} from 'lodash';
 import {Visualization2D} from './visualizer/Visualization2D';
 import {getNode} from '../utils/map';
@@ -41,6 +42,7 @@ export function FrameworkEventsTable({
   const instance = usePlugin(plugin);
 
   const focusedNode = useValue(instance.uiState.focusedNode);
+
   const managerRef = useRef<DataTableManager<AugmentedFrameworkEvent> | null>(
     null,
   );
@@ -51,13 +53,31 @@ export function FrameworkEventsTable({
     if (nodeId != null) {
       managerRef.current?.resetFilters();
       if (isTree) {
-        managerRef.current?.addColumnFilter('treeId', nodeId as string, {
-          exact: true,
-        });
+        managerRef.current?.setSearchExpression([
+          {
+            field: {
+              key: 'treeId',
+              label: 'TreeId',
+            },
+            operator: {
+              ...dataTablePowerSearchOperators.int_equals(),
+            },
+            searchValue: nodeId,
+          },
+        ]);
       } else {
-        managerRef.current?.addColumnFilter('nodeId', nodeId as string, {
-          exact: true,
-        });
+        managerRef.current?.setSearchExpression([
+          {
+            field: {
+              key: 'nodeId',
+              label: 'NodeId',
+            },
+            operator: {
+              ...dataTablePowerSearchOperators.int_equals(),
+            },
+            searchValue: nodeId,
+          },
+        ]);
       }
     }
   }, [instance.uiActions, isTree, nodeId]);
@@ -68,10 +88,10 @@ export function FrameworkEventsTable({
     const customColumns = [...customColumnKeys].map(
       (customKey: string) =>
         ({
-          key: customKey,
+          key: `payload.${customKey}` as any,
           title: startCase(customKey),
-          onRender: (row: AugmentedFrameworkEvent) => row.payload?.[customKey],
-        } as DataTableColumn<AugmentedFrameworkEvent>),
+          powerSearchConfig: {type: 'string'},
+        }) as DataTableColumn<AugmentedFrameworkEvent>,
     );
 
     return staticColumns.concat(customColumns);
@@ -135,42 +155,69 @@ export function FrameworkEventsTable({
   );
 }
 
+const MonoSpace = (t: any) => (
+  <span style={{fontFamily: 'monospace'}}>{t}</span>
+);
+
+const idConfig = [dataTablePowerSearchOperators.int_equals()];
+
 const staticColumns: DataTableColumn<AugmentedFrameworkEvent>[] = [
   {
     key: 'timestamp',
+    sortable: true,
     onRender: (row: FrameworkEvent) => formatTimestampMillis(row.timestamp),
     title: 'Timestamp',
+    formatters: MonoSpace,
+
+    powerSearchConfig: [
+      dataTablePowerSearchOperators.newer_than_absolute_date(),
+      dataTablePowerSearchOperators.older_than_absolute_date(),
+    ],
   },
   {
     key: 'type',
     title: 'Event type',
     onRender: (row: FrameworkEvent) => eventTypeToName(row.type),
+    powerSearchConfig: {type: 'enum', inferEnumOptionsFromData: true},
   },
   {
     key: 'duration',
-    title: 'Duration',
+    title: 'Duration (Nanos)',
     onRender: (row: FrameworkEvent) =>
       row.duration != null ? formatDuration(row.duration) : null,
+    formatters: MonoSpace,
+    powerSearchConfig: {type: 'int'},
   },
   {
     key: 'treeId',
     title: 'TreeId',
+    powerSearchConfig: idConfig,
+
+    formatters: MonoSpace,
   },
   {
     key: 'rootComponentName',
     title: 'Root component name',
+    powerSearchConfig: {type: 'string'},
+    formatters: MonoSpace,
   },
   {
     key: 'nodeId',
     title: 'Component ID',
+    powerSearchConfig: idConfig,
+    formatters: MonoSpace,
   },
   {
     key: 'nodeName',
     title: 'Component name',
+    powerSearchConfig: {type: 'string'},
+    formatters: MonoSpace,
   },
   {
     key: 'thread',
     title: 'Thread',
     onRender: (row: FrameworkEvent) => startCase(row.thread),
+    powerSearchConfig: {type: 'enum', inferEnumOptionsFromData: true},
+    formatters: MonoSpace,
   },
 ];

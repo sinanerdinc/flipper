@@ -27,6 +27,9 @@ import {
   DataSourceRendererVirtual,
   DataSourceRendererStatic,
   DataSourceVirtualizer,
+  DataSourceView,
+  DataSource,
+  createDataSource,
 } from '../../data-source/index';
 import {
   computeDataTableFilter,
@@ -51,11 +54,6 @@ import {Formatter} from '../DataFormatter';
 import {usePluginInstanceMaybe} from '../../plugin/PluginContext';
 import {debounce} from 'lodash';
 import {useInUnitTest} from '../../utils/useInUnitTest';
-import {
-  createDataSource,
-  DataSource,
-  _DataSourceView,
-} from 'flipper-plugin-core';
 import {HighlightProvider} from '../Highlight';
 import {useLatestRef} from '../../utils/useLatestRef';
 
@@ -80,7 +78,7 @@ type DataTableBaseProps<T = any> = {
   onContextMenu?: (selection: undefined | T) => React.ReactElement;
   onRenderEmpty?:
     | null
-    | ((dataView?: _DataSourceView<T, T[keyof T]>) => React.ReactElement);
+    | ((dataView?: DataSourceView<T, T[keyof T]>) => React.ReactElement);
 };
 
 export type ItemRenderer<T> = (
@@ -270,6 +268,8 @@ export function DataTable<T extends object>(
         ? () => {
             // using a ref keeps the config stable, so that a new context menu doesn't need
             // all rows to be rerendered, but rather shows it conditionally
+            // TODO: Fix this the next time the file is edited.
+            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
             return contextMenuRef.current?.()!;
           }
         : undefined,
@@ -484,6 +484,8 @@ export function DataTable<T extends object>(
         });
       } else if (selection && selection.current >= 0) {
         dispatch({type: 'setAutoScroll', autoScroll: false});
+        // TODO: Fix this the next time the file is edited.
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
         virtualizerRef.current?.scrollToIndex(selection!.current, {
           align: 'auto',
         });
@@ -503,6 +505,8 @@ export function DataTable<T extends object>(
     (start: number, end: number, total: number, offset) => {
       setRange(`${start} - ${end} / ${total}`);
       lastOffset.current = offset;
+      // TODO: Fix this the next time the file is edited.
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
       clearTimeout(hideRange.current!);
       hideRange.current = setTimeout(() => {
         setRange('');
@@ -787,7 +791,7 @@ function syncRecordsToDataSource<T>(
 }
 
 function createDefaultEmptyRenderer<T>(dataTableManager?: DataTableManager<T>) {
-  return (dataView?: _DataSourceView<T, T[keyof T]>) => (
+  return (dataView?: DataSourceView<T, T[keyof T]>) => (
     <EmptyTable dataView={dataView} dataManager={dataTableManager} />
   );
 }
@@ -796,7 +800,7 @@ function EmptyTable<T>({
   dataView,
   dataManager,
 }: {
-  dataView?: _DataSourceView<T, T[keyof T]>;
+  dataView?: DataSourceView<T, T[keyof T]>;
   dataManager?: DataTableManager<T>;
 }) {
   const resetFilters = useCallback(() => {

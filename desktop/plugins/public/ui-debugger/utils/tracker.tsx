@@ -9,8 +9,8 @@
 
 import {getFlipperLib} from 'flipper-plugin';
 
-import {FrameworkEventType, Tag} from '../ClientTypes';
-import {SelectionSource} from '../DesktopTypes';
+import {FrameworkEventType, Id, Tag} from '../ClientTypes';
+import {TraversalMode, SelectionSource} from '../DesktopTypes';
 
 const UI_DEBUGGER_IDENTIFIER = 'ui-debugger';
 
@@ -55,6 +55,15 @@ type TrackerEvents = {
     searchTerm: string;
     tags: Tag[];
   };
+  'attribute-editted': {
+    nodeId: Id;
+    attributeType: string;
+    nodeName: string;
+    attributeName: string;
+    attributePath: string[];
+    value: any;
+    tags: Tag[];
+  };
   'ide-opened': {
     ide: string;
     name: string;
@@ -67,6 +76,7 @@ type TrackerEvents = {
   'context-menu-expand-recursive': {};
   'context-menu-collapse-recursive': {};
   'context-menu-collapse-non-ancestors': {};
+  'traversal-mode-updated': {mode: TraversalMode};
 };
 
 export interface Tracker {

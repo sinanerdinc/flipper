@@ -28,6 +28,40 @@ const resolveFbStubsToFbPlugin: Plugin = {
   },
 };
 
+const workerPlugin: Plugin = {
+  name: 'worker-plugin',
+  setup({onResolve, onLoad}) {
+    onResolve({filter: /\?worker$/}, (args) => {
+      return {
+        path: require.resolve(args.path.slice(0, -7), {
+          paths: [args.resolveDir],
+        }),
+        namespace: 'worker',
+      };
+    });
+
+    onLoad({filter: /.*/, namespace: 'worker'}, async (args) => {
+      // Bundle the worker file
+      const result = await build({
+        entryPoints: [args.path],
+        bundle: true,
+        write: false,
+        format: 'iife',
+        platform: 'browser',
+      });
+
+      const dataUri = `data:text/javascript;base64,${Buffer.from(
+        result.outputFiles[0].text,
+      ).toString('base64')}`;
+
+      return {
+        contents: `export default function() { return new Worker("${dataUri}"); }`,
+        loader: 'js',
+      };
+    });
+  },
+};
+
 interface RunBuildConfig {
   pluginDir: string;
   entry: string;
@@ -68,12 +102,10 @@ async function runBuild({
       '@ant-design/icons',
       // It is an optional dependency for rollup that we use in react-devtools
       'fsevents',
-      // Allow desktop plugins that require electron to build (deprecated)
-      'electron',
     ],
     sourcemap: dev ? 'inline' : 'external',
     minify: !dev,
-    plugins: intern ? [resolveFbStubsToFbPlugin] : undefined,
+    plugins: [workerPlugin, ...(intern ? [resolveFbStubsToFbPlugin] : [])],
     loader: {
       '.ttf': 'dataurl',
     },

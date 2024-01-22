@@ -152,6 +152,15 @@ export type FlipperServerEvents = {
     crash: CrashLog;
   };
   'client-setup': UninitializedClient;
+  'client-setup-error': {
+    client: UninitializedClient;
+    type: 'error' | 'warning';
+    message: string;
+  };
+  'client-setup-step': {
+    client: UninitializedClient;
+    step: string;
+  };
   'client-connected': ClientDescription;
   'client-disconnected': {id: string};
   'client-message': {
@@ -159,15 +168,11 @@ export type FlipperServerEvents = {
     message: string;
   };
   'connectivity-troubleshoot-cmd': CommandRecordEntry;
-  'connectivity-troubleshoot-log': ConnectionRecordEntry;
-  'connectivity-troubleshoot-notification': {
-    type: 'error' | 'warning';
-    title: string;
-    description: string;
-  };
+  'connectivity-troubleshoot-log': ConnectionRecordEntry[];
   'plugins-server-add-on-message': ExecuteMessage;
   'download-file-update': DownloadFileUpdate;
   'server-log': LoggerInfo;
+  'browser-connection-created': {};
 };
 
 export type OS =
@@ -287,6 +292,7 @@ export type FlipperServerCommands = {
     serial: string,
     appBundlePath: string,
   ) => Promise<void>;
+  'device-open-app': (serial: string, name: string) => Promise<void>;
   'device-forward-port': (
     serial: string,
     local: string,
@@ -361,6 +367,7 @@ export type FlipperServerCommands = {
       timeout?: number;
       internGraphUrl?: string;
       headers?: Record<string, string | number | boolean>;
+      vpnMode?: 'vpn' | 'vpnless';
     },
   ) => Promise<GraphResponse>;
   'intern-graph-get': (
@@ -370,6 +377,7 @@ export type FlipperServerCommands = {
       timeout?: number;
       internGraphUrl?: string;
       headers?: Record<string, string | number | boolean>;
+      vpnMode?: 'vpn' | 'vpnless';
     },
   ) => Promise<GraphResponse>;
   'intern-upload-scribe-logs': (
@@ -379,6 +387,8 @@ export type FlipperServerCommands = {
   shutdown: () => Promise<void>;
   'is-logged-in': () => Promise<boolean>;
   'environment-info': () => Promise<EnvironmentInfo>;
+  'move-pwa': () => Promise<void>;
+  'fetch-new-version': (version: string) => Promise<void>;
 };
 
 export type GraphResponse = {
@@ -661,7 +671,19 @@ export type SignCertificateMessage = {
   csr: string;
   destination: string;
   medium: number | undefined;
+  timestamp?: number;
+  logs?: string[];
 };
+
+export type SignCertificateAckMessage = {
+  method: 'signCertificateAck';
+  isError: boolean;
+  medium: number | undefined;
+  hasRequiredFiles: boolean;
+  config: any;
+  logs?: string[];
+};
+
 export type GetPluginsMessage = {
   id: number;
   method: 'getPlugins';

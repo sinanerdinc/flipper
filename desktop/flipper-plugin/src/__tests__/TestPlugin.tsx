@@ -8,10 +8,9 @@
  */
 
 import * as React from 'react';
-import {PluginClient} from 'flipper-plugin-core';
+import {PluginClient} from '../plugin/Plugin';
 import {usePlugin} from '../plugin/PluginContext';
-import {useValue} from '../state/atom';
-import {createState} from 'flipper-plugin-core';
+import {createState, useValue} from '../state/atom';
 
 type Events = {
   inc: {
@@ -57,7 +56,7 @@ export function plugin(client: PluginClient<Events, Methods>) {
     });
   });
 
-  function _unused_JustTypeChecks() {
+  function _unusedJustTypeChecks() {
     // @ts-expect-error Argument of type '"bla"' is not assignable
     client.send('bla', {});
     // @ts-expect-error Argument of type '{ stuff: string; }' is not assignable to parameter of type

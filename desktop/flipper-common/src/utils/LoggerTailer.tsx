@@ -62,7 +62,7 @@ export function initLogTailer() {
 function transformLogLevel(level: LoggerTypes, message: string) {
   if (level === 'error') {
     // Error comes from one of our dependencies and is not actionable
-    if (message.includes('ResizeObserver loop limit exceeded')) {
+    if (message.includes('ResizeObserver loop')) {
       return 'warn';
     }
     // Axios will create rather unhelpful error messages which
@@ -72,11 +72,6 @@ function transformLogLevel(level: LoggerTypes, message: string) {
     }
 
     if (message.includes('Watchman was not found in PATH')) {
-      return 'warn';
-    }
-
-    // Random Electron error, not actionable.
-    if (message.includes('Document is not focused')) {
       return 'warn';
     }
   }

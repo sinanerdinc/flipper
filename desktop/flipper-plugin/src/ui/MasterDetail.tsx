@@ -29,9 +29,8 @@ import {
 } from '@ant-design/icons';
 import {Button} from 'antd';
 import {usePluginInstance} from '../plugin/PluginContext';
-import {Atom, createState} from 'flipper-plugin-core';
 import {useAssertStableRef} from '../utils/useAssertStableRef';
-import {useValue} from '../state/atom';
+import {Atom, createState, useValue} from '../state/atom';
 
 type MasterDetailProps<T> = {
   /**
@@ -163,6 +162,8 @@ export function MasterDetail<T extends object>({
   }, [client, tableManagerRef]);
 
   const handleGoToBottom = useCallback(() => {
+    // TODO: Fix this the next time the file is edited.
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const size = dataSource ? dataSource.view.size : records!.length;
     tableManagerRef?.current?.selectItem(size - 1);
   }, [dataSource, records, tableManagerRef]);
@@ -203,6 +204,8 @@ export function MasterDetail<T extends object>({
       enableAutoScroll
       {...tableProps}
       dataSource={dataSource as any}
+      // TODO: Fix this the next time the file is edited.
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
       records={records!}
       tableManagerRef={tableManagerRef}
       onSelect={handleSelect}
@@ -227,6 +230,8 @@ export function MasterDetail<T extends object>({
     />
   );
 
+  // TODO: Fix this the next time the file is edited.
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
   switch (sidebarPosition!) {
     case 'main':
       return (

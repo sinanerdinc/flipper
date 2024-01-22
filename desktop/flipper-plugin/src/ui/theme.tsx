@@ -60,6 +60,8 @@ export const theme = {
   bold: 600,
   semanticColors: {
     attribute: antColors.orange[5],
+    // TODO: Fix this the next time the file is edited.
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     nullValue: antColors.grey.primary!,
     stringValue: antColors.orange[5],
     colorValue: antColors.cyan[5],
@@ -100,8 +102,8 @@ export function normalizeSpace(spacing: Spacing, defaultSpace: number): number {
   return spacing === true
     ? defaultSpace
     : spacing === undefined || spacing === false
-    ? 0
-    : typeof spacing === 'string'
-    ? theme.space[spacing]
-    : spacing;
+      ? 0
+      : typeof spacing === 'string'
+        ? theme.space[spacing]
+        : spacing;
 }

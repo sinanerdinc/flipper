@@ -135,11 +135,13 @@ function TableHeadColumn({
   isResizable,
   sorted,
   dispatch,
+  isFilterable,
 }: {
   column: DataTableColumn<any>;
   sorted: SortDirection;
   isResizable: boolean;
   dispatch: DataTableDispatch;
+  isFilterable: boolean;
 }) {
   const ref = useRef<HTMLDivElement | null>(null);
 
@@ -153,7 +155,11 @@ function TableHeadColumn({
     // normalise number to a percentage if we were originally passed a percentage
     if (isPercentage(column.width) && ref.current) {
       const {parentElement} = ref.current;
+      // TODO: Fix this the next time the file is edited.
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
       const parentWidth = parentElement!.clientWidth;
+      // TODO: Fix this the next time the file is edited.
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
       const {childNodes} = parentElement!;
 
       const lastElem = childNodes[childNodes.length - 1];
@@ -222,7 +228,7 @@ function TableHeadColumn({
           ) : null}
         </Text>
       </div>
-      <FilterIcon column={column} dispatch={dispatch} />
+      {isFilterable ? <FilterIcon column={column} dispatch={dispatch} /> : null}
     </Layout.Right>
   );
 
@@ -250,11 +256,13 @@ export const TableHead = memo(function TableHead({
   dispatch,
   sorting,
   scrollbarSize,
+  isFilterable = true,
 }: {
   dispatch: DataTableDispatch<any>;
   visibleColumns: DataTableColumn<any>[];
   sorting: Sorting | undefined;
   scrollbarSize: number;
+  isFilterable?: boolean;
 }) {
   return (
     <TableHeadContainer scrollbarSize={scrollbarSize}>
@@ -264,7 +272,10 @@ export const TableHead = memo(function TableHead({
           column={column}
           isResizable={i < visibleColumns.length - 1}
           dispatch={dispatch}
+          // TODO: Fix this the next time the file is edited.
+          // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
           sorted={sorting?.key === column.key ? sorting!.direction : undefined}
+          isFilterable={isFilterable}
         />
       ))}
     </TableHeadContainer>

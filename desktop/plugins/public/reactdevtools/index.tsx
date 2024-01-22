@@ -15,6 +15,7 @@ import {
   createState,
   useValue,
   Toolbar,
+  getFlipperLib,
 } from 'flipper-plugin';
 import React from 'react';
 import {Button, message, Switch, Typography} from 'antd';
@@ -22,6 +23,7 @@ import {Button, message, Switch, Typography} from 'antd';
 import * as ReactDevToolsOSS from 'react-devtools-inline/frontend';
 import {DevToolsEmbedder} from './DevToolsEmbedder';
 import {Events, Methods} from './contract';
+import {IncompatibleNotice} from './fb-stubs/IncompatibleNotice';
 
 const DEV_TOOLS_NODE_ID = 'reactdevtools-out-of-react-node';
 const CONNECTED = 'DevTools connected';
@@ -71,9 +73,8 @@ export function devicePlugin(client: DevicePluginClient<Events, Methods>) {
       'flipper-plugin-react-devtools.maybeGetInitialGlobalDevTools',
     );
     try {
-      const newGlobalDevToolsSource = await client.sendToServerAddOn(
-        'globalDevTools',
-      );
+      const newGlobalDevToolsSource =
+        await client.sendToServerAddOn('globalDevTools');
 
       if (newGlobalDevToolsSource) {
         globalDevToolsInstance = {
@@ -115,6 +116,8 @@ export function devicePlugin(client: DevicePluginClient<Events, Methods>) {
     let module;
     switch (instanceType) {
       case 'global':
+        // TODO: Fix this the next time the file is edited.
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
         module = globalDevToolsInstance!.module;
         break;
       case 'oss':
@@ -225,9 +228,15 @@ export function devicePlugin(client: DevicePluginClient<Events, Methods>) {
           },
         };
 
+        // TODO: Fix this the next time the file is edited.
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
         const bridge = devToolsInstance!.module.createBridge(window, wall);
+        // TODO: Fix this the next time the file is edited.
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
         const store = devToolsInstance!.module.createStore(bridge);
 
+        // TODO: Fix this the next time the file is edited.
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
         const DevTools = devToolsInstance!.module.initialize(window, {
           bridge,
           store,
@@ -351,6 +360,10 @@ export function Component() {
 
   const displayToolbar =
     globalDevToolsAvailable || connectionStatus !== ConnectionStatus.Connected;
+
+  if (getFlipperLib().environmentInfo.isHeadlessBuild) {
+    return <IncompatibleNotice />;
+  }
 
   return (
     <>

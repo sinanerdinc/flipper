@@ -16,8 +16,8 @@ import {EOL} from 'os';
 import pmap from 'p-map';
 import {rootDir} from './paths';
 import yargs from 'yargs';
-import {isPluginJson} from 'flipper-common';
 
+// eslint-disable-next-line node/no-sync
 const argv = yargs
   .usage('yarn tsc-plugins [args]')
   .version(false)
@@ -30,7 +30,7 @@ const argv = yargs
     },
   })
   .help()
-  .parse(process.argv.slice(1));
+  .parseSync(process.argv.slice(1));
 
 const pluginsDir = path.join(rootDir, argv.dir);
 const fbPluginsDir = path.join(pluginsDir, 'fb');
@@ -87,6 +87,8 @@ async function findAffectedPlugins(errors: string[]) {
   function getDependencies(name: string): Set<string> {
     if (!depsByName.has(name)) {
       const set = new Set<string>();
+      // TODO: Fix this the next time the file is edited.
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
       const pkg = packageByName.get(name)!;
       set.add(name);
       const allDeps = Object.keys({
@@ -103,6 +105,8 @@ async function findAffectedPlugins(errors: string[]) {
       }
       depsByName.set(name, set);
     }
+    // TODO: Fix this the next time the file is edited.
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     return depsByName.get(name)!;
   }
   for (const name of packageByName.keys()) {
@@ -112,7 +116,11 @@ async function findAffectedPlugins(errors: string[]) {
     const logFile = path.join(pkg.dir, 'tsc-error.log');
     await fs.remove(logFile);
     let logStream: fs.WriteStream | undefined;
+    // TODO: Fix this the next time the file is edited.
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     for (const dep of depsByName.get(pkg.json.name)!) {
+      // TODO: Fix this the next time the file is edited.
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
       const relativeDir = path.relative(rootDir, packageByName.get(dep)!.dir);
       for (const error of errors) {
         if (error.startsWith(relativeDir)) {

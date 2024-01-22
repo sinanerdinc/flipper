@@ -7,7 +7,12 @@
  * @format
  */
 
-import {createDataSource, createState, PluginClient} from 'flipper-plugin';
+import {
+  _ReadOnlyAtom,
+  createDataSource,
+  createState,
+  PluginClient,
+} from 'flipper-plugin';
 import {
   Events,
   FrameScanEvent,
@@ -19,37 +24,42 @@ import {
   SnapshotInfo,
   ClientNode,
   FrameworkEventMetadata,
+  Methods,
 } from './ClientTypes';
 import {
   UIState,
   NodeSelection,
-  StreamInterceptorError,
+  TraversalMode,
   StreamState,
   ReadOnlyUIState,
   LiveClientState,
   WireFrameMode,
   AugmentedFrameworkEvent,
+  StreamInterceptorEventEmitter,
+  Color,
 } from './DesktopTypes';
-import {getStreamInterceptor} from './fb-stubs/StreamInterceptor';
+import EventEmitter from 'eventemitter3';
+import {addInterceptors} from './fb-stubs/StreamInterceptor';
 import {prefetchSourceFileLocation} from './components/fb-stubs/IDEContextMenu';
 import {checkFocusedNodeStillActive} from './plugin/ClientDataUtils';
 import {uiActions} from './plugin/uiActions';
 import {first} from 'lodash';
 import {getNode} from './utils/map';
+import {handleTraversalError} from './plugin/traversalError';
 
-type PendingData = {
-  metadata: Record<MetadataId, Metadata>;
-  frame: FrameScanEvent | null;
-};
-
-export function plugin(client: PluginClient<Events>) {
+export function plugin(client: PluginClient<Events, Methods>) {
   const rootId = createState<Id | undefined>(undefined);
   const metadata = createState<Map<MetadataId, Metadata>>(new Map());
-  const streamInterceptor = getStreamInterceptor(client.device.os);
+
+  const streamInterceptor = new EventEmitter() as StreamInterceptorEventEmitter;
+  addInterceptors(client.device.os, streamInterceptor);
   const snapshot = createState<SnapshotInfo | null>(null);
   const nodesAtom = createState<Map<Id, ClientNode>>(new Map());
   const frameworkEvents = createDataSource<AugmentedFrameworkEvent>([], {
-    indices: [['nodeId']],
+    indices: [
+      ['nodeId'],
+      ['type'], //for inferred values
+    ],
     limit: 10000,
   });
   const frameworkEventsCustomColumns = createState<Set<string>>(new Set());
@@ -67,16 +77,21 @@ export function plugin(client: PluginClient<Events>) {
     nodes: new Map(),
   };
 
+  const lastProcessedFrameTime = createState(0);
+
+  const _uiActions = uiActions(
+    uiState,
+    nodesAtom,
+    snapshot,
+    mutableLiveClientData,
+    client,
+    metadata,
+  );
+
   const perfEvents = createDataSource<PerformanceStatsEvent, 'txId'>([], {
     key: 'txId',
     limit: 10 * 1024,
   });
-
-  //this holds pending any pending data that needs to be applied in the event of a stream interceptor error
-  //while in the error state more metadata or a more recent frame may come in so both cases need to apply the same darta
-  const pendingData: PendingData = {frame: null, metadata: {}};
-
-  let lastFrameTime = 0;
 
   client.onMessage('init', (event) => {
     console.log('[ui-debugger] init');
@@ -86,12 +101,30 @@ export function plugin(client: PluginClient<Events>) {
         draft.set(frameworkEventMeta.type, false);
       });
     });
+    if (
+      event.supportedTraversalModes &&
+      event.supportedTraversalModes.length > 1
+    ) {
+      uiState.supportedTraversalModes.set(event.supportedTraversalModes);
+    }
+    if (
+      event.currentTraversalMode &&
+      uiState.supportedTraversalModes.get().includes(event.currentTraversalMode)
+    ) {
+      uiState.traversalMode.set(event.currentTraversalMode);
+      console.log(
+        `[ui-debugger] Unsupported debugger mode ${event.currentTraversalMode}.`,
+      );
+    }
+
     frameworkEventMetadata.update((draft) => {
       event.frameworkEventMetadata?.forEach((frameworkEventMeta) => {
         draft.set(frameworkEventMeta.type, frameworkEventMeta);
       });
     });
   });
+
+  handleTraversalError(client);
 
   client.onConnect(() => {
     uiState.isConnected.set(true);
@@ -103,82 +136,20 @@ export function plugin(client: PluginClient<Events>) {
     console.log('[ui-debugger] disconnected');
   });
 
-  async function processMetadata(
-    incomingMetadata: Record<MetadataId, Metadata>,
-  ) {
-    try {
-      const mappedMeta = await Promise.all(
-        Object.values(incomingMetadata).map((metadata) =>
-          streamInterceptor.transformMetadata(metadata),
-        ),
-      );
-
-      metadata.update((draft) => {
-        for (const metadata of mappedMeta) {
-          draft.set(metadata.id, metadata);
-        }
-      });
-      return true;
-    } catch (error) {
-      for (const metadata of Object.values(incomingMetadata)) {
-        pendingData.metadata[metadata.id] = metadata;
-      }
-      handleStreamError('Metadata', error);
-      return false;
-    }
-  }
-
-  function handleStreamError(source: 'Frame' | 'Metadata', error: any) {
-    if (error instanceof StreamInterceptorError) {
-      const retryCallback = async () => {
-        uiState.streamState.set({state: 'RetryingAfterError'});
-
-        if (!(await processMetadata(pendingData.metadata))) {
-          //back into error state, dont proceed
-          return;
-        }
-        if (pendingData.frame != null) {
-          if (!(await processFrame(pendingData.frame))) {
-            //back into error state, dont proceed
-            return;
-          }
-        }
-
-        uiState.streamState.set({state: 'Ok'});
-        pendingData.frame = null;
-        pendingData.metadata = {};
-      };
-
-      uiState.streamState.set({
-        state: 'StreamInterceptorRetryableError',
-        retryCallback: retryCallback,
-        error: error,
-      });
-    } else {
-      console.error(
-        `[ui-debugger] Unexpected Error processing ${source}`,
-        error,
-      );
-
-      uiState.streamState.set({
-        state: 'FatalError',
-        error: error,
-        clearCallBack: async () => {
-          uiState.streamState.set({state: 'Ok'});
-          nodesAtom.set(new Map());
-          frameworkEvents.clear();
-          snapshot.set(null);
-        },
-      });
-    }
-  }
-
   client.onMessage('metadataUpdate', async (event) => {
     if (!event.attributeMetadata) {
       return;
     }
+    const metadata = Object.values(event.attributeMetadata);
+    streamInterceptor.emit('metadataReceived', metadata);
+  });
 
-    await processMetadata(event.attributeMetadata);
+  streamInterceptor.on('metadataUpdated', (updatedMetadata) => {
+    metadata.update((draft) => {
+      for (const meta of updatedMetadata) {
+        draft.set(meta.id, meta);
+      }
+    });
   });
 
   /**
@@ -209,36 +180,25 @@ export function plugin(client: PluginClient<Events>) {
   });
 
   const processFrame = async (frameScan: FrameScanEvent) => {
-    try {
-      const nodes = new Map(
-        frameScan.nodes.map((node) => [node.id, {...node}]),
-      );
-      if (frameScan.frameTime > lastFrameTime) {
-        applyFrameData(nodes, frameScan.snapshot);
-        lastFrameTime = frameScan.frameTime;
-      }
-      applyFrameworkEvents(frameScan, nodes);
-      lastFrameTime = frameScan.frameTime;
+    const nodes = new Map(frameScan.nodes.map((node) => [node.id, {...node}]));
 
-      const [processedNodes, additionalMetadata] =
-        await streamInterceptor.transformNodes(nodes);
-
-      metadata.update((draft) => {
-        for (const metadata of additionalMetadata) {
-          draft.set(metadata.id, metadata);
-        }
-      });
-
-      if (frameScan.frameTime >= lastFrameTime) {
-        applyFrameData(processedNodes, frameScan.snapshot);
-        lastFrameTime = frameScan.frameTime;
-      }
-    } catch (error) {
-      pendingData.frame = frameScan;
-      handleStreamError('Frame', error);
-      return false;
-    }
+    streamInterceptor.emit('frameReceived', {
+      frameTime: frameScan.frameTime,
+      snapshot: frameScan.snapshot,
+      nodes: nodes,
+    });
+    applyFrameworkEvents(frameScan, nodes);
   };
+
+  streamInterceptor.on('frameUpdated', (frame) => {
+    if (frame.frameTime > lastProcessedFrameTime.get()) {
+      applyFrameData(frame.nodes, frame.snapshot);
+      lastProcessedFrameTime.set(frame.frameTime);
+      const selectedNode = uiState.selectedNode.get();
+      if (selectedNode != null)
+        _uiActions.ensureAncestorsExpanded(selectedNode.id);
+    }
+  });
 
   function applyFrameworkEvents(
     frameScan: FrameScanEvent,
@@ -282,7 +242,10 @@ export function plugin(client: PluginClient<Events>) {
 
     uiState.highlightedNodes.update((draft) => {
       for (const node of nodesToHighlight) {
-        draft.add(node);
+        draft.set(
+          node,
+          `#${Math.floor(Math.random() * 16777215).toString(16)}`,
+        );
       }
     });
 
@@ -295,7 +258,6 @@ export function plugin(client: PluginClient<Events>) {
     }, HighlightTime);
   }
 
-  //todo deal with racecondition, where bloks screen is fetching, takes time then you go back get more recent frame then bloks screen comes and overrites it
   function applyFrameData(
     nodes: Map<Id, ClientNode>,
     snapshotInfo: SnapshotInfo | undefined,
@@ -318,6 +280,7 @@ export function plugin(client: PluginClient<Events>) {
       }
     }, 0);
   }
+
   client.onMessage('subtreeUpdate', (subtreeUpdate) => {
     processFrame({
       frameTime: subtreeUpdate.txId,
@@ -330,8 +293,9 @@ export function plugin(client: PluginClient<Events>) {
 
   return {
     rootId,
+    currentFrameTime: lastProcessedFrameTime as _ReadOnlyAtom<number>,
     uiState: uiState as ReadOnlyUIState,
-    uiActions: uiActions(uiState, nodesAtom, snapshot, mutableLiveClientData),
+    uiActions: _uiActions,
     nodes: nodesAtom,
     frameworkEvents,
     frameworkEventMetadata,
@@ -340,11 +304,11 @@ export function plugin(client: PluginClient<Events>) {
     metadata,
     perfEvents,
     os: client.device.os,
+    client,
   };
 }
 
-const HighlightTime = 300;
-
+const HighlightTime = 1500;
 export {Component} from './components/main';
 export * from './ClientTypes';
 
@@ -360,7 +324,7 @@ function createUIState(): UIState {
     streamState: createState<StreamState>({state: 'Ok'}),
     visualiserWidth: createState(Math.min(window.innerWidth / 4.5, 500)),
 
-    highlightedNodes: createState(new Set<Id>()),
+    highlightedNodes: createState(new Map<Id, Color>()),
 
     selectedNode: createState<NodeSelection | undefined>(undefined),
     //used to indicate whether we will higher the visualizer / tree when a matching event comes in
@@ -380,5 +344,9 @@ function createUIState(): UIState {
     focusedNode: createState<Id | undefined>(undefined),
     expandedNodes: createState<Set<Id>>(new Set()),
     wireFrameMode: createState<WireFrameMode>('All'),
+
+    // view-hierarchy is the default state so we start with it until we fetch supported modes from the client
+    supportedTraversalModes: createState<TraversalMode[]>(['view-hierarchy']),
+    traversalMode: createState<TraversalMode>('view-hierarchy'),
   };
 }

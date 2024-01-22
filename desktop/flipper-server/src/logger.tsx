@@ -21,7 +21,8 @@ import fsRotator from 'file-stream-rotator';
 import {ensureFile} from 'fs-extra';
 import {access} from 'fs/promises';
 import {constants} from 'fs';
-import {initializeLogger as initLogger} from 'flipper-server-core';
+import {initializeLogger as initializeLoggerCore} from './fb-stubs/Logger';
+import {setProcessExitRoutine} from './utils/processExit';
 
 export const loggerOutputFile = 'flipper-server-log.out';
 
@@ -32,7 +33,7 @@ export async function initializeLogger(
   // Suppress stdout debug messages, but keep writing them to the file.
   console.debug = function () {};
 
-  const logger = initLogger(environmentInfo);
+  const logger = initializeLoggerCore(environmentInfo);
   setLoggerInstance(logger);
 
   const logFilename = path.join(staticDir, loggerOutputFile);
@@ -54,20 +55,24 @@ export async function initializeLogger(
 
   addLogTailer((level: LoggerTypes, ...data: Array<any>) => {
     const logInfo = LoggerFormat(level, ...data);
-    logStream?.write(`${JSON.stringify(logInfo)}\n`);
+    logStream?.write(`[${logInfo.time}][${logInfo.type}] ${logInfo.msg}\n`);
 
     if (level === 'error') {
       const {
-        message,
-        error: {stack, interaction, name},
+        error: {stack, name},
       } = LoggerExtractError(data);
-      const logInfo = LoggerFormat(level, {
-        name,
-        stack,
-        interaction,
-        message,
-      });
-      logStream?.write(`${JSON.stringify(logInfo)}\n`);
+
+      logStream?.write(`${name}: \n${stack}\n`);
     }
   });
+
+  const finalizeLogger = async () => {
+    const logStreamToEnd = logStream;
+    // Prevent future writes
+    logStream = undefined;
+    await new Promise<void>((resolve) => {
+      logStreamToEnd?.end(resolve);
+    });
+  };
+  setProcessExitRoutine(finalizeLogger);
 }

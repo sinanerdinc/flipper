@@ -10,10 +10,14 @@
 import type {DataTableColumn} from './DataTable';
 import {Percentage} from '../../utils/widthUtils';
 import {MutableRefObject, Reducer, RefObject} from 'react';
-import {DataSourceVirtualizer} from '../../data-source/index';
+import {
+  DataSource,
+  DataSourceView,
+  DataSourceVirtualizer,
+} from '../../data-source/index';
 import produce, {castDraft, immerable, original} from 'immer';
 import {theme} from '../theme';
-import {DataSource, getFlipperLib, _DataSourceView} from 'flipper-plugin-core';
+import {getFlipperLib} from '../../plugin/FlipperLib';
 
 export type OnColumnResize = (id: string, size: number | Percentage) => void;
 export type Sorting<T = any> = {
@@ -142,7 +146,7 @@ type DataManagerActions<T> =
 
 type DataManagerConfig<T> = {
   dataSource: DataSource<T, T[keyof T]>;
-  dataView: _DataSourceView<T, T[keyof T]>;
+  dataView: DataSourceView<T, T[keyof T]>;
   defaultColumns: DataTableColumn<T>[];
   scope: string;
   onSelect: undefined | ((item: T | undefined, items: T[]) => void);
@@ -183,6 +187,8 @@ export const dataTableManagerReducer = produce<
   DataManagerState<any>,
   [DataManagerActions<any>]
 >(function (draft, action) {
+  // TODO: Fix this the next time the file is edited.
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
   const config = original(draft.config)!;
   switch (action.type) {
     case 'reset': {
@@ -203,6 +209,8 @@ export const dataTableManagerReducer = produce<
     }
     case 'resizeColumn': {
       const {column, width} = action;
+      // TODO: Fix this the next time the file is edited.
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
       const col = draft.columns.find((c) => c.key === column)!;
       col.width = width;
       break;
@@ -218,11 +226,14 @@ export const dataTableManagerReducer = produce<
     }
     case 'toggleColumnVisibility': {
       const {column} = action;
+      // TODO: Fix this the next time the file is edited.
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
       const col = draft.columns.find((c) => c.key === column)!;
       col.visible = !col.visible;
       break;
     }
     case 'setSearchValue': {
+      getFlipperLib().logger.track('usage', 'data-table:filter:search');
       draft.searchValue = action.value;
       draft.previousSearchValue = '';
       draft.filterExceptions = undefined;
@@ -240,6 +251,7 @@ export const dataTableManagerReducer = produce<
       break;
     }
     case 'toggleSearchValue': {
+      getFlipperLib().logger.track('usage', 'data-table:filter:toggle-search');
       draft.filterExceptions = undefined;
       if (draft.searchValue) {
         draft.previousSearchValue = draft.searchValue;
@@ -297,6 +309,7 @@ export const dataTableManagerReducer = produce<
       break;
     }
     case 'addColumnFilter': {
+      getFlipperLib().logger.track('usage', 'data-table:filter:add-column');
       draft.filterExceptions = undefined;
       addColumnFilter(
         draft.columns,
@@ -307,10 +320,15 @@ export const dataTableManagerReducer = produce<
       break;
     }
     case 'removeColumnFilter': {
+      getFlipperLib().logger.track('usage', 'data-table:filter:remove-column');
       draft.filterExceptions = undefined;
+      // TODO: Fix this the next time the file is edited.
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
       const column = draft.columns.find((c) => c.key === action.column)!;
       const index =
         action.index ??
+        // TODO: Fix this the next time the file is edited.
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
         column.filters?.findIndex((f) => f.label === action.label!);
 
       if (index === undefined || index < 0) {
@@ -321,21 +339,30 @@ export const dataTableManagerReducer = produce<
       break;
     }
     case 'toggleColumnFilter': {
+      getFlipperLib().logger.track('usage', 'data-table:filter:toggle-column');
       draft.filterExceptions = undefined;
+      // TODO: Fix this the next time the file is edited.
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
       const column = draft.columns.find((c) => c.key === action.column)!;
       const index =
         action.index ??
+        // TODO: Fix this the next time the file is edited.
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
         column.filters?.findIndex((f) => f.label === action.label!);
 
       if (index === undefined || index < 0) {
         break;
       }
+      // TODO: Fix this the next time the file is edited.
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
       const f = column.filters![index];
       f.enabled = !f.enabled;
       break;
     }
     case 'setColumnFilterInverse': {
       draft.filterExceptions = undefined;
+      // TODO: Fix this the next time the file is edited.
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
       draft.columns.find((c) => c.key === action.column)!.inversed =
         action.inversed;
       break;
@@ -343,7 +370,7 @@ export const dataTableManagerReducer = produce<
     case 'setColumnFilterFromSelection': {
       draft.filterExceptions = undefined;
       const items = getSelectedItems(
-        config.dataView as _DataSourceView<any, any>,
+        config.dataView as DataSourceView<any, any>,
         draft.selection,
       );
       items.forEach((item, index) => {
@@ -427,7 +454,7 @@ export type DataTableManager<T> = {
   toggleColumnVisibility(column: keyof T): void;
   sortColumn(column: keyof T, direction?: SortDirection): void;
   setSearchValue(value: string, addToHistory?: boolean): void;
-  dataView: _DataSourceView<T, T[keyof T]>;
+  dataView: DataSourceView<T, T[keyof T]>;
   stateRef: RefObject<Readonly<DataManagerState<T>>>;
   toggleSearchValue(): void;
   toggleHighlightSearch(): void;
@@ -445,7 +472,7 @@ export type DataTableManager<T> = {
 };
 
 export function createDataTableManager<T>(
-  dataView: _DataSourceView<T, T[keyof T]>,
+  dataView: DataSourceView<T, T[keyof T]>,
   dispatch: DataTableDispatch<T>,
   stateRef: MutableRefObject<DataManagerState<T>>,
 ): DataTableManager<T> {
@@ -486,7 +513,6 @@ export function createDataTableManager<T>(
       dispatch({type: 'sortColumn', column, direction});
     },
     setSearchValue(value, addToHistory = false) {
-      getFlipperLib().logger.track('usage', 'data-table:filter:search');
       dispatch({type: 'setSearchValue', value, addToHistory});
     },
     toggleSearchValue() {
@@ -508,11 +534,9 @@ export function createDataTableManager<T>(
       dispatch({type: 'setShowNumberedHistory', showNumberedHistory});
     },
     addColumnFilter(column, value, options = {}) {
-      getFlipperLib().logger.track('usage', 'data-table:filter:add-column');
       dispatch({type: 'addColumnFilter', column, value, options});
     },
     removeColumnFilter(column, label) {
-      getFlipperLib().logger.track('usage', 'data-table:filter:remove-column');
       dispatch({type: 'removeColumnFilter', column, label});
     },
     setFilterExceptions(exceptions: string[] | undefined) {
@@ -555,7 +579,11 @@ export function createInitialState<T>(
     sorting: prefs?.sorting,
     selection: prefs?.selection
       ? {
+          // TODO: Fix this the next time the file is edited.
+          // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
           current: prefs!.selection.current,
+          // TODO: Fix this the next time the file is edited.
+          // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
           items: new Set(prefs!.selection.items),
         }
       : emptySelection,
@@ -587,14 +615,20 @@ function addColumnFilter<T>(
   options: AddColumnFilterOptions = {},
 ): void {
   options = Object.assign({disableOthers: false, strict: true}, options);
+  // TODO: Fix this the next time the file is edited.
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
   const column = columns.find((c) => c.key === columnId)!;
   const filterValue = options.exact
     ? String(value)
     : String(value).toLowerCase();
+  // TODO: Fix this the next time the file is edited.
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
   const existing = column.filters!.find((c) => c.value === filterValue);
   if (existing) {
     existing.enabled = true;
   } else {
+    // TODO: Fix this the next time the file is edited.
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     column.filters!.push({
       label: String(value),
       value: filterValue,
@@ -604,6 +638,8 @@ function addColumnFilter<T>(
     });
   }
   if (options.disableOthers) {
+    // TODO: Fix this the next time the file is edited.
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     column.filters!.forEach((c) => {
       if (c.value !== filterValue) {
         c.enabled = false;
@@ -613,14 +649,14 @@ function addColumnFilter<T>(
 }
 
 export function getSelectedItem<T>(
-  dataView: _DataSourceView<T, T[keyof T]>,
+  dataView: DataSourceView<T, T[keyof T]>,
   selection: Selection,
 ): T | undefined {
   return selection.current < 0 ? undefined : dataView.get(selection.current);
 }
 
 export function getSelectedItems<T>(
-  dataView: _DataSourceView<T, T[keyof T]>,
+  dataView: DataSourceView<T, T[keyof T]>,
   selection: Selection,
 ): T[] {
   return [...selection.items]
@@ -745,6 +781,8 @@ export function computeDataTableFilter(
 
   return function dataTableFilter(item: any) {
     for (const column of filteringColumns) {
+      // TODO: Fix this the next time the file is edited.
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
       const rowMatchesFilter = column.filters!.some((f) => {
         if (!f.enabled) {
           return false;

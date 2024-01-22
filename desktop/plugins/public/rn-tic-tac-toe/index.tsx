@@ -18,7 +18,6 @@ import {
   styled,
   theme,
   Layout,
-  FlipperPluginInstance,
 } from 'flipper-plugin';
 
 type Player = ' ' | 'X' | 'O';
@@ -121,14 +120,6 @@ export const plugin = (client: PluginClient<Events, Methods>) => {
   };
 };
 
-export const API = (pluginInstance: FlipperPluginInstance<typeof plugin>) => {
-  return {
-    makeMove: pluginInstance.makeMove,
-    reset: pluginInstance.reset,
-    state: pluginInstance.state,
-  };
-};
-
 const desktopPlayer = 'O';
 
 export const Component = () => {
@@ -159,8 +150,8 @@ export const Component = () => {
           {winner !== ' '
             ? `Winner! ${winner}`
             : turn === 'O'
-            ? 'Your turn'
-            : 'Mobile players turn..'}
+              ? 'Your turn'
+              : 'Mobile players turn..'}
         </Typography.Text>
         <GameBoard>
           {cells.map((c, idx) => (

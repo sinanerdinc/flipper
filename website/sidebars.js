@@ -15,6 +15,7 @@ module.exports = {
       'features/index',
       'features/share-flipper-data',
       'features/react-native',
+      'features/virtual-devices',
       {
         Plugins: [
           {
@@ -65,7 +66,10 @@ module.exports = {
           'getting-started/troubleshooting/general',
           'getting-started/troubleshooting/android',
           'getting-started/troubleshooting/ios',
+          'getting-started/troubleshooting/install-android-sdk',
+          'getting-started/troubleshooting/install-ios-sdk',
           'getting-started/troubleshooting/react-native',
+          ...fbInternalOnly(['getting-started/troubleshooting/fb/increase-anrdoid-emulator-storage']),
         ],
       },
       {
@@ -124,6 +128,7 @@ module.exports = {
       {
         'Desktop Plugin APIs': [
           'extending/flipper-plugin',
+          'extending/power-search',
           'extending/styling-components',
           'extending/style-guide',
           'extending/deeplinks',
@@ -163,6 +168,7 @@ module.exports = {
                 'internals/documentation-formatting',
               ]
             },
+            'fb/vpnless-interngraph',
             'fb/arc_uiqr',
             'fb/connections',
             {
@@ -174,7 +180,6 @@ module.exports = {
                 'fb/error-logging',
               ]
             },
-            'fb/Electron-Upgrade',
             {
               'Launcher': [
                 'fb/hacking-on-launcher',

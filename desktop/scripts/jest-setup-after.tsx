@@ -11,23 +11,26 @@
 
 // eslint-disable-next-line node/no-extraneous-import
 import {cleanup} from '@testing-library/react';
-import {resolve} from 'path';
-import os from 'os';
-
-(global as any).FlipperRenderHostInstance = createStubRenderHost();
 
 import {TestUtils} from 'flipper-plugin';
-import {
-  FlipperServerConfig,
-  ReleaseChannel,
-  Tristate,
-  parseEnvironmentVariables,
-  uuid,
-} from 'flipper-common';
 
-// Only import the type!
 // eslint-disable-next-line node/no-extraneous-import
-import type {RenderHost} from 'flipper-ui-core';
+import {
+  setFlipperServer,
+  setFlipperServerConfig,
+} from 'flipper-ui/src/flipperServer';
+import {setFlipperServerConfig as setFlipperServerConfigServer} from 'flipper-server/src/FlipperServerConfig';
+
+(global as any).flipperConfig = {
+  theme: 'light',
+  entryPoint: 'bundle.js',
+  debug: true,
+  graphSecret: 'TEST_GRAPH_SECRET',
+  appVersion: '0.0.0',
+  sessionId: 'TEST_SESSION_ID',
+  unixname: 'Luke',
+  authToken: 'TEST_AUTH_TOKEN',
+};
 
 const test = global.test;
 if (!test) {
@@ -53,8 +56,9 @@ if (!test) {
 };
 
 beforeEach(() => {
-  // Fresh mock flipperServer for every test
-  (global as any).FlipperRenderHostInstance = createStubRenderHost();
+  setFlipperServer(TestUtils.createFlipperServerMock());
+  setFlipperServerConfig(TestUtils.createStubFlipperServerConfig());
+  setFlipperServerConfigServer(TestUtils.createStubFlipperServerConfig());
 });
 
 afterEach(cleanup);
@@ -63,7 +67,7 @@ console.debug = function () {
   // Intentional noop, we don't want debug statements in Jest runs
 };
 
-// make perf tools available in Node (it is available in Browser / Electron just fine)
+// Make perf tools available in Node (it is available in Browser just fine)
 import {PerformanceObserver, performance} from 'perf_hooks';
 // Object.freeze(performance);
 // Object.freeze(Object.getPrototypeOf(performance));
@@ -128,109 +132,3 @@ Object.defineProperty(global, 'matchMedia', {
     dispatchEvent: jest.fn(),
   })),
 });
-
-function createStubRenderHost(): RenderHost {
-  const rootPath = resolve(__dirname, '..');
-  const stubConfig: FlipperServerConfig = {
-    sessionId: uuid(),
-    environmentInfo: {
-      processId: process.pid,
-      appVersion: '0.0.0',
-      isProduction: false,
-      isHeadlessBuild: false,
-      releaseChannel: ReleaseChannel.DEFAULT,
-      flipperReleaseRevision: '000',
-      os: {
-        arch: process.arch,
-        platform: process.platform,
-        unixname: os.userInfo().username,
-      },
-      versions: {
-        node: process.versions.node,
-        platform: os.release(),
-      },
-    },
-    env: parseEnvironmentVariables(process.env),
-    gatekeepers: {
-      TEST_PASSING_GK: true,
-      TEST_FAILING_GK: false,
-    },
-    launcherSettings: {
-      ignoreLocalPin: false,
-      releaseChannel: ReleaseChannel.DEFAULT,
-    },
-    paths: {
-      appPath: rootPath,
-      desktopPath: `/dev/null`,
-      execPath: process.execPath,
-      homePath: `/dev/null`,
-      staticPath: resolve(rootPath, 'static'),
-      tempPath: os.tmpdir(),
-    },
-    processConfig: {
-      disabledPlugins: [],
-      lastWindowPosition: null,
-      launcherEnabled: false,
-      launcherMsg: null,
-      screenCapturePath: `/dev/null`,
-      updaterEnabled: true,
-      suppressPluginUpdateNotifications: false,
-    },
-    settings: {
-      androidHome: `/dev/null`,
-      darkMode: 'light',
-      enableAndroid: false,
-      enableIOS: false,
-      enablePhysicalIOS: false,
-      enablePrefetching: Tristate.False,
-      idbPath: `/dev/null`,
-      reactNative: {
-        shortcuts: {enabled: false, openDevMenu: '', reload: ''},
-      },
-      showWelcomeAtStartup: false,
-      suppressPluginErrors: false,
-      persistDeviceData: false,
-      enablePluginMarketplace: false,
-      marketplaceURL: '',
-      enablePluginMarketplaceAutoUpdate: true,
-    },
-    validWebSocketOrigins: [],
-  };
-
-  return {
-    readTextFromClipboard() {
-      return Promise.resolve('');
-    },
-    writeTextToClipboard() {},
-    async importFile() {
-      return undefined;
-    },
-    async exportFile() {
-      return undefined;
-    },
-    async exportFileBinary() {
-      return undefined;
-    },
-    hasFocus() {
-      return true;
-    },
-    onIpcEvent() {},
-    sendIpcEvent() {},
-    shouldUseDarkColors() {
-      return false;
-    },
-    restartFlipper() {},
-    openLink() {},
-    serverConfig: stubConfig,
-    GK(gk: string) {
-      return stubConfig.gatekeepers[gk] ?? false;
-    },
-    flipperServer: TestUtils.createFlipperServerMock(),
-    async requirePlugin(path: string) {
-      return {plugin: require(path)};
-    },
-    getStaticResourceUrl(relativePath): string {
-      return 'file://' + resolve(rootPath, 'static', relativePath);
-    },
-  };
-}

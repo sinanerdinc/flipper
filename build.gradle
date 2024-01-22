@@ -11,7 +11,7 @@ buildscript {
         mavenCentral()
     }
     dependencies {
-        classpath 'com.android.tools.build:gradle:8.1.0'
+        classpath 'com.android.tools.build:gradle:8.1.2'
         classpath 'com.vanniktech:gradle-maven-publish-plugin:0.25.3'
         classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$KOTLIN_VERSION"
         classpath "org.jetbrains.kotlin:kotlin-serialization:$KOTLIN_VERSION"
@@ -49,8 +49,8 @@ subprojects {
 
 ext {
     minSdkVersion = 15
-    targetSdkVersion = 33
-    compileSdkVersion = 33
+    targetSdkVersion = 34
+    compileSdkVersion = 34
     buildToolsVersion = "33.0.2"
     ndkVersion = "25.1.8937393"
     javaTargetVersion = JavaVersion.VERSION_17
@@ -70,7 +70,7 @@ ext.deps = [
         supportEspresso    : 'androidx.test.espresso:espresso-core:3.5.1',
         supportEspressoIntents : 'androidx.test.espresso:espresso-intents:3.5.1',
         supportTestRunner  : 'androidx.test:runner:1.5.2',
-        supportCoreKtx     : 'androidx.core:core-ktx:1.10.1',
+        supportCoreKtx     : 'androidx.core:core-ktx:1.12.0',
         // Arch
         archPaging         : 'android.arch.paging:runtime:1.0.1',
         // First-party
@@ -105,20 +105,20 @@ ext.deps = [
         robolectric        : 'org.robolectric:robolectric:4.10.3',
         junit              : 'junit:junit:4.13.2',
         hamcrest           : 'org.hamcrest:hamcrest-library:2.2',
-        mockito            : 'org.mockito:mockito-core:5.3.1',
+        mockito            : 'org.mockito:mockito-core:5.8.0',
         okhttp3            : 'com.squareup.okhttp3:okhttp:4.11.0',
         leakcanary         : 'com.squareup.leakcanary:leakcanary-android:1.6.3',
         leakcanary2        : 'com.squareup.leakcanary:leakcanary-android:2.8.1',
-        protobuf           : 'com.google.protobuf:protobuf-java:3.23.4',
+        protobuf           : 'com.google.protobuf:protobuf-java:3.25.1',
         testCore           : 'androidx.test:core:1.4.0',
         testRules          : 'androidx.test:rules:1.5.0',
         // Plugin dependencies
-        flipperFrescoPlugin: 'com.facebook.fresco:flipper-fresco-plugin:3.0.0',
-        frescoFlipper      : 'com.facebook.fresco:flipper:3.0.0',
-        frescoStetho       : 'com.facebook.fresco:stetho:3.0.0',
-        fresco             : 'com.facebook.fresco:fresco:3.0.0',
-        frescoUiCommon     : 'com.facebook.fresco:ui-common:3.0.0',
-        frescoVito         : 'com.facebook.fresco:vito:3.0.0',
-        frescoVitoCore     : 'com.facebook.fresco:vito-core:3.0.0',
-        frescoVitoLitho    : 'com.facebook.fresco:vito-litho:3.0.0',
+        flipperFrescoPlugin: "com.facebook.fresco:flipper-fresco-plugin:$FRESCO_VERSION",
+        frescoFlipper      : "com.facebook.fresco:flipper:$FRESCO_VERSION",
+        frescoStetho       : "com.facebook.fresco:stetho:$FRESCO_VERSION",
+        fresco             : "com.facebook.fresco:fresco:$FRESCO_VERSION",
+        frescoUiCommon     : "com.facebook.fresco:ui-common:$FRESCO_VERSION",
+        frescoVito         : "com.facebook.fresco:vito:$FRESCO_VERSION",
+        frescoVitoCore     : "com.facebook.fresco:vito-core:$FRESCO_VERSION",
+        frescoVitoLitho    : "com.facebook.fresco:vito-litho:$FRESCO_VERSION",
 ]

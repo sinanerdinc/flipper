@@ -35,6 +35,7 @@ test('Correct top level API exposed', () => {
       "DataList",
       "DataSource",
       "DataTable",
+      "DataTableLegacy",
       "DetailSidebar",
       "Dialog",
       "ElementsInspector",
@@ -44,6 +45,7 @@ test('Correct top level API exposed', () => {
       "Layout",
       "MarkerTimeline",
       "MasterDetail",
+      "MasterDetailLegacy",
       "NUX",
       "Panel",
       "PowerSearch",
@@ -56,15 +58,18 @@ test('Correct top level API exposed', () => {
       "Tracked",
       "TrackingScope",
       "batch",
+      "batched",
       "createControlledPromise",
       "createDataSource",
       "createState",
       "createTablePlugin",
+      "dataTablePowerSearchOperators",
       "getFlipperLib",
       "isAtom",
       "path",
       "produce",
       "renderReactRoot",
+      "reportPluginFailures",
       "safeStringify",
       "sleep",
       "styled",
@@ -72,6 +77,8 @@ test('Correct top level API exposed', () => {
       "textContent",
       "theme",
       "timeout",
+      "tryCatchReportPluginFailures",
+      "tryCatchReportPluginFailuresAsync",
       "useHighlighter",
       "useLocalStorageState",
       "useLogger",
@@ -87,7 +94,6 @@ test('Correct top level API exposed', () => {
   expect(exposedTypes.sort()).toMatchInlineSnapshot(`
     [
       "Atom",
-      "AtomPersistentStorage",
       "CrashLog",
       "CrashLogListener",
       "CreatePasteArgs",
@@ -96,7 +102,9 @@ test('Correct top level API exposed', () => {
       "DataInspectorExpanded",
       "DataSourceVirtualizer",
       "DataTableColumn",
+      "DataTableColumnLegacy",
       "DataTableManager",
+      "DataTableManagerLegacy",
       "DataValueExtractor",
       "DefaultKeyboardAction",
       "Device",
@@ -116,6 +124,8 @@ test('Correct top level API exposed', () => {
       "ElementSearchResultSet",
       "ElementsInspectorElement",
       "ElementsInspectorProps",
+      "EnumLabels",
+      "FieldConfig",
       "FileDescriptor",
       "FileEncoding",
       "FlipperLib",
@@ -129,9 +139,11 @@ test('Correct top level API exposed', () => {
       "MenuEntry",
       "NormalizedMenuEntry",
       "Notification",
+      "OperatorConfig",
       "PluginClient",
       "PowerSearchConfig",
       "RemoteServerContext",
+      "SearchExpressionTerm",
       "ServerAddOn",
       "ServerAddOnPluginConnection",
     ]
@@ -151,7 +163,7 @@ test('All APIs documented', async () => {
     .forEach((key) => {
       // There should be a header with this identifier
       if (!new RegExp(`# ${key}\\b`).test(docs)) {
-        fail(`Not documented: '${key}'`);
+        throw new Error(`Not documented: '${key}'`);
       }
     });
 });

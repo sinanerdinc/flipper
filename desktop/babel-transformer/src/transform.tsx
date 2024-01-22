@@ -49,7 +49,6 @@ const tsTransformPlugins = [
   optionalChainingPlugin,
   coalescingOperatorPlugin,
   // Sourcemap disabled because
-  // https://github.com/electron/electron/issues/17772#issuecomment-570795784
   // https://github.com/emotion-js/emotion/issues/1838
   [emotionPlugin, {autoLabel: 'always', sourceMap: false}],
 ];
@@ -106,6 +105,8 @@ export default function transform({
     throw new Error('Failed to transform');
   }
   const result = generate(
+    // TODO: Fix this the next time the file is edited.
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     transformed.ast!,
     {
       filename,
