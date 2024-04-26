@@ -548,7 +548,7 @@ function createRequestFromRequestInfo(
   customColumns
     .filter((c) => c.type === 'request')
     .forEach(({header}) => {
-      (res as any)['request_header_' + header] = getHeaderValue(
+      (res as any)[`request_header_${header}`] = getHeaderValue(
         data.headers,
         header,
       );
@@ -577,7 +577,7 @@ function updateRequestWithResponseInfo(
   customColumns
     .filter((c) => c.type === 'response')
     .forEach(({header}) => {
-      (res as any)['response_header_' + header] = getHeaderValue(
+      (res as any)[`response_header_${header}`] = getHeaderValue(
         response.headers,
         header,
       );
@@ -611,11 +611,16 @@ export function Component() {
           enableAutoScroll
           extraActions={
             <Layout.Horizontal gap>
-              <Button title="Clear logs" onClick={instance.clearLogs}>
+              <Button
+                type="ghost"
+                title="Clear logs"
+                onClick={instance.clearLogs}>
                 <DeleteOutlined />
               </Button>
               {isMockResponseSupported && (
-                <Button onClick={instance.onMockButtonPressed}>Mock</Button>
+                <Button type="ghost" onClick={instance.onMockButtonPressed}>
+                  Mock
+                </Button>
               )}
             </Layout.Horizontal>
           }

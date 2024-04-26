@@ -9,7 +9,9 @@
 
 #import <UIKit/UIKit.h>
 #import "UIDBounds.h"
+#import "UIDCompoundTypeHint.h"
 #import "UIDInspectable.h"
+#import "UIDMetadata.h"
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -18,7 +20,7 @@ NS_ASSUME_NONNULL_BEGIN
 /**
   A globally unique ID used to identify a node in the hierarchy.
  */
-- (NSUInteger)UID_identifier;
+- (NSString*)UID_identifier;
 
 /**
   The name used to identify this node in the inspector.  Does not need to be
@@ -31,6 +33,14 @@ NS_ASSUME_NONNULL_BEGIN
   object will be shown in order and with a header matching the given name.
   */
 - (void)UID_aggregateAttributes:(UIDMutableAttributes*)attributes;
+
+/**
+  Edit the attribute specified by the metadata path with the given value.
+*/
+- (void)UID_aggregateEditAttributeWithValue:(id)value
+                               metadataPath:
+                                   (NSArray<UIDMetadataId>*)metadataPath
+                                       hint:(UIDCompoundTypeHint)hint;
 
 @optional
 

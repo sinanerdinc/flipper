@@ -14,10 +14,10 @@ NS_ASSUME_NONNULL_BEGIN
 @protocol UIDUpdate
 @end
 
-@interface UIDSubtreeUpdate : NSObject<UIDUpdate>
+@interface UIDFrameUpdate : NSObject<UIDUpdate>
 
 @property(nonatomic) NSString* observerType;
-@property(nonatomic) NSUInteger rootId;
+@property(nonatomic) NSString* rootId;
 @property(nonatomic) NSArray* nodes;
 @property(nonatomic) NSTimeInterval timestamp;
 @property(nonatomic) long traversalMS;

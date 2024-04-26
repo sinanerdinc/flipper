@@ -8,19 +8,29 @@
 #ifdef FB_SONARKIT_ENABLED
 
 #import "NSArray+Foundation.h"
-#import "UIDSubtreeUpdateEvent+Foundation.h"
+#import "UIDFrameScanEvent+Foundation.h"
 #import "UIImage+Foundation.h"
 
-FB_LINKABLE(UIDSubtreeUpdateEvent_Foundation)
-@implementation UIDSubtreeUpdateEvent (Foundation)
+FB_LINKABLE(UIDSnapshotInfo_Foundation)
+@implementation UIDSnapshotInfo (Foundation)
 
 - (id)toFoundation {
   return @{
-    @"txId" : [NSNumber numberWithDouble:self.txId],
-    @"observerType" : self.observerType,
-    @"rootId" : [NSNumber numberWithUnsignedInt:self.rootId],
+    @"nodeId" : self.nodeId,
+    @"data" : self.image ? [self.image toFoundation] : @"",
+  };
+}
+
+@end
+
+FB_LINKABLE(UIDFrameScanEvent_Foundation)
+@implementation UIDFrameScanEvent (Foundation)
+
+- (id)toFoundation {
+  return @{
+    @"frameTime" : [NSNumber numberWithDouble:self.timestamp],
     @"nodes" : [self.nodes toFoundation],
-    @"snapshot" : self.snapshot ? [self.snapshot toFoundation] : @"",
+    @"snapshot" : [self.snapshot toFoundation],
     @"frameworkEvents" : self.frameworkEvents
         ? [self.frameworkEvents toFoundation]
         : @[],

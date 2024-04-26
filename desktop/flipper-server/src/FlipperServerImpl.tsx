@@ -7,6 +7,9 @@
  * @format
  */
 
+import cp from 'child_process';
+import os from 'os';
+import {promisify} from 'util';
 import './utils/macCa';
 import './utils/fetch-polyfill';
 import EventEmitter from 'events';
@@ -88,11 +91,9 @@ function setProcessState(settings: Settings) {
   // emulator/emulator is more reliable than tools/emulator, so prefer it if
   // it exists
   process.env.PATH =
-    ['emulator', 'tools', 'platform-tools']
+    `${['emulator', 'tools', 'platform-tools']
       .map((directory) => path.resolve(androidHome, directory))
-      .join(':') +
-    `:${idbPath}` +
-    `:${process.env.PATH}`;
+      .join(':')}:${idbPath}` + `:${process.env.PATH}`;
 }
 
 /**
@@ -124,7 +125,7 @@ export class FlipperServerImpl implements FlipperServer {
     keytarModule?: KeytarModule,
   ) {
     setFlipperServerConfig(config);
-    console.info('Loaded flipper config: ' + JSON.stringify(config, null, 2));
+    console.info(`Loaded flipper config: ${JSON.stringify(config, null, 2)}`);
 
     setProcessState(config.settings);
     const server = (this.server = new ServerController(this));
@@ -158,6 +159,16 @@ export class FlipperServerImpl implements FlipperServer {
     );
 
     server.addListener(
+      'client-setup-secret-exchange',
+      (client: UninitializedClient, secret: string) => {
+        this.emit('client-setup-secret-exchange', {
+          client,
+          secret,
+        });
+      },
+    );
+
+    server.addListener(
       'client-unresponsive-error',
       ({
         client,
@@ -179,8 +190,8 @@ export class FlipperServerImpl implements FlipperServer {
             'Timeout establishing connection. It looks like the app is taking longer than it should to reconnect using the exchanged certificates. ';
           message +=
             medium === 'WWW'
-              ? `Verify that your mobile device is connected to Lighthouse/VPN and that you are logged in to 
-              Flipper with the same user account used by the app (unfortunately, test accounts are not currently supported), 
+              ? `Verify that your mobile device is connected to Lighthouse/VPN and that you are logged in to
+              Flipper with the same user account used by the app (unfortunately, test accounts are not currently supported),
               so that certificates can be exhanged. See: https://fburl.com/flippervpn. Once this is done, re-running the app may solve this issue.`
               : 'Re-running the app may solve this issue.';
           this.emit('client-setup-error', {
@@ -228,7 +239,7 @@ export class FlipperServerImpl implements FlipperServer {
 
   setServerState(state: FlipperServerState, error?: Error) {
     this.state = state;
-    this.stateError = '' + error;
+    this.stateError = `${error}`;
     this.emit('server-state', {state, error: this.stateError});
   }
 
@@ -506,7 +517,7 @@ export class FlipperServerImpl implements FlipperServer {
     'metro-command': async (serial: string, command: string) => {
       const device = this.getDevice(serial);
       if (!(device instanceof MetroDevice)) {
-        throw new Error('Not a Metro device: ' + serial);
+        throw new Error(`Not a Metro device: ${serial}`);
       }
       device.sendCommand(command);
     },
@@ -552,6 +563,10 @@ export class FlipperServerImpl implements FlipperServer {
     'ios-launch-simulator': async (udid) => {
       assertNotNull(this.ios);
       return this.ios.launchSimulator(udid);
+    },
+    'ios-launch-app': async (udid, appName) => {
+      assertNotNull(this.ios);
+      return this.ios.launchApp(udid, appName);
     },
     'ios-idb-kill': async () => {
       assertNotNull(this.ios);
@@ -634,6 +649,15 @@ export class FlipperServerImpl implements FlipperServer {
       }
       return uploadRes;
     },
+    restart: async () => {
+      if (os.platform() === 'darwin') {
+        const execAsPromise = promisify(cp.exec);
+        await execAsPromise('open flipper://execute?cmd=restart');
+        return;
+      }
+
+      throw new Error('Restarting the app is only supported on macOS');
+    },
     shutdown: async () => {
       // Do not use processExit helper. We want to server immediatelly quit when this call is triggerred
       process.exit(0);
@@ -682,8 +706,9 @@ export class FlipperServerImpl implements FlipperServer {
       return;
     }
     this.devices.delete(serial);
-    device.disconnect(); // we'll only destroy upon replacement
+    device.disconnect();
     this.emit('device-disconnected', device.info);
+    this.emit('device-removed', device.info);
   }
 
   getDevice(serial: string): ServerDevice {
@@ -697,6 +722,18 @@ export class FlipperServerImpl implements FlipperServer {
 
   hasDevice(serial: string): boolean {
     return !!this.devices.get(serial);
+  }
+
+  getDeviceWithName(name: string): ServerDevice | undefined {
+    const devices = this.getDevices();
+    const matches = devices.filter((device) => device.info.title === name);
+    if (matches.length === 1) {
+      return matches[0];
+    }
+  }
+
+  getDeviceWithSerial(serial: string): ServerDevice | undefined {
+    return this.devices.get(serial);
   }
 
   getDeviceSerials(): string[] {

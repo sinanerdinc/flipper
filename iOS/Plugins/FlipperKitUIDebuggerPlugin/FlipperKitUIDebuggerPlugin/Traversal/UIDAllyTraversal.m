@@ -71,15 +71,15 @@
       _accessibilityLeafDescendantsWithOptions:options] mutableCopy];
 
   UIDNode* rootNode = [self _uidNodeForNode:root];
-  NSInteger rootIdentifier = rootNode.identifier;
+  NSString* rootIdentifier = rootNode.identifier;
 
   NSMutableArray<UIDNode*>* nodes = [NSMutableArray new];
   NSMutableArray* childrenIds = [NSMutableArray new];
   for (NSObject* node in allyNodes) {
     UIDNode* uidNode = [self _uidNodeForNode:node];
-    uidNode.parent = @(rootIdentifier);
+    uidNode.parent = rootIdentifier;
     [nodes addObject:uidNode];
-    [childrenIds addObject:[NSNumber numberWithUnsignedInt:uidNode.identifier]];
+    [childrenIds addObject:uidNode.identifier];
   }
   rootNode.children = childrenIds;
   [nodes insertObject:rootNode atIndex:0];
@@ -89,7 +89,7 @@
 - (UIDNode*)_uidNodeForNode:(NSObject*)node {
   UIDNodeDescriptor* descriptor =
       [_descriptorRegister descriptorForClass:[node class]];
-  NSUInteger nodeIdentifier = [descriptor identifierForNode:node];
+  NSString* nodeIdentifier = [descriptor identifierForNode:node];
   UIDNode* uidNode = [[UIDNode alloc]
       initWithIdentifier:nodeIdentifier
            qualifiedName:[descriptor nameForNode:node]
@@ -143,10 +143,18 @@ static void _setVoiceOver(BOOL enabled) {
 static NSString* _nameForNode(NSObject* node) {
   NSMutableArray* const parts = [NSMutableArray new];
   if (node.accessibilityLabel.length > 0) {
+/* @cwt-override FIXME[T168581563]: -Wnullable-to-nonnull-conversion */
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wnullable-to-nonnull-conversion"
     [parts addObject:node.accessibilityLabel];
+#pragma clang diagnostic pop
   }
   if (node.accessibilityValue.length > 0) {
+/* @cwt-override FIXME[T168581563]: -Wnullable-to-nonnull-conversion */
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wnullable-to-nonnull-conversion"
     [parts addObject:node.accessibilityValue];
+#pragma clang diagnostic pop
   }
   if (parts.count == 0) {
     return @"[No accessibility label]";
@@ -246,24 +254,44 @@ static UIDAttributes* _atrtibutesForNode(NSObject* node) {
   accessibilityAttributes[IsAccessibilityElementAttributeId] =
       [UIDInspectableBoolean fromBoolean:node.isAccessibilityElement];
   accessibilityAttributes[AccessibilityLabelAttributeId] =
+/* @cwt-override FIXME[T168581563]: -Wnullable-to-nonnull-conversion */
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wnullable-to-nonnull-conversion"
       [UIDInspectableText fromText:node.accessibilityLabel];
+#pragma clang diagnostic pop
   if ([node conformsToProtocol:@protocol(UIAccessibilityIdentification)]) {
     accessibilityAttributes[AccessibilityIdentifierAttributeId] =
+/* @cwt-override FIXME[T168581563]: -Wnullable-to-nonnull-conversion */
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wnullable-to-nonnull-conversion"
         [UIDInspectableText fromText:((id<UIAccessibilityIdentification>)node)
+#pragma clang diagnostic pop
                                          .accessibilityIdentifier];
   }
   accessibilityAttributes[AccessibilityValueAttributeId] =
+/* @cwt-override FIXME[T168581563]: -Wnullable-to-nonnull-conversion */
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wnullable-to-nonnull-conversion"
       [UIDInspectableText fromText:node.accessibilityValue];
+#pragma clang diagnostic pop
   if (node.accessibilityHint != nil) {
     accessibilityAttributes[AccessibilityHintAttributeId] =
+/* @cwt-override FIXME[T168581563]: -Wnullable-to-nonnull-conversion */
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wnullable-to-nonnull-conversion"
         [UIDInspectableText fromText:node.accessibilityHint];
+#pragma clang diagnostic pop
   }
   accessibilityAttributes[AccessibilityViewIsModalAttributeId] =
       [UIDInspectableBoolean fromBoolean:node.accessibilityViewIsModal];
   accessibilityAttributes[ShouldGroupAccessibilityChildrenAttributeId] =
       [UIDInspectableBoolean fromBoolean:node.shouldGroupAccessibilityChildren];
   accessibilityAttributes[AccessibilityTraitsAttributeId] = [UIDInspectableText
+/* @cwt-override FIXME[T168581563]: -Wnullable-to-nonnull-conversion */
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wnullable-to-nonnull-conversion"
       fromText:_descriptionFromTraits(node.accessibilityTraits, NO)];
+#pragma clang diagnostic pop
   accessibilityAttributes[AccessibilityCustomActions] =
       _accessibilityCustomActionsDescription(node.accessibilityCustomActions);
 

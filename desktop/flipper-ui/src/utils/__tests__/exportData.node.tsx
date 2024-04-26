@@ -95,7 +95,7 @@ function generateClientIdentifierWithSalt(
 ): string {
   const array = identifier.split('#');
   const serial = array.pop();
-  return array.join('#') + '#' + salt + '-' + serial;
+  return `${array.join('#')}#${salt}-${serial}`;
 }
 
 function generateClientFromClientWithSalt(
@@ -110,7 +110,7 @@ function generateClientFromClientWithSalt(
       app,
       os,
       device,
-      device_id: salt + '-' + device_id,
+      device_id: `${salt}-${device_id}`,
       medium: client.query.medium,
     },
   };
@@ -1125,7 +1125,7 @@ test('test determinePluginsToProcess to ignore archived clients', async () => {
       pluginKey: `${client.id}#TestPlugin`,
       pluginId: 'TestPlugin',
       pluginName: 'TestPlugin',
-      client: client,
+      client,
     },
   ]);
 });

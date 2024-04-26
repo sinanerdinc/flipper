@@ -7,17 +7,74 @@
 
 #ifdef FB_SONARKIT_ENABLED
 
+#import "UIDCompoundTypeHint.h"
 #import "UIDInspectable.h"
 #import "UIDMetadata.h"
 #import "UIDMetadataRegister.h"
 #import "UIDSnapshot.h"
 #import "UIView+UIDDescriptor.h"
 
+static UIDMetadataId AddressAttributeId;
+static UIDMetadataId UIViewAttributeId;
+static UIDMetadataId FrameAttributeId;
+static UIDMetadataId BoundsAttributeId;
+static UIDMetadataId CenterAttributeId;
+static UIDMetadataId AnchorPointAttributeId;
+static UIDMetadataId SafeAreaInsetsAttributeId;
+static UIDMetadataId ClipsToBoundsAttributeId;
+static UIDMetadataId HiddenAttributeId;
+static UIDMetadataId AlphaAttributeId;
+static UIDMetadataId OpaqueAttributeId;
+static UIDMetadataId ClearContextBeforeDrawingAttributeId;
+static UIDMetadataId BackgroundColorAttributeId;
+static UIDMetadataId TintColorAttributeId;
+static UIDMetadataId TagAttributeId;
+
+static UIDMetadataId CALayerAttributeId;
+static UIDMetadataId CALayerShadowColorAttributeId;
+static UIDMetadataId CALayerShadowOpacityAttributeId;
+static UIDMetadataId CALayerShadowRadiusAttributeId;
+static UIDMetadataId CALayerShadowOffsetAttributeId;
+static UIDMetadataId CALayerBackgroundColorAttributeId;
+static UIDMetadataId CALayerBorderColorAttributeId;
+static UIDMetadataId CALayerBorderWidthAttributeId;
+static UIDMetadataId CALayerCornerRadiusAttributeId;
+static UIDMetadataId CALayerMasksToBoundsAttributeId;
+
+static UIDMetadataId AccessibilityAttributeId;
+static UIDMetadataId IsAccessibilityElementAttributeId;
+static UIDMetadataId AccessibilityLabelAttributeId;
+static UIDMetadataId AccessibilityIdentifierAttributeId;
+static UIDMetadataId AccessibilityValueAttributeId;
+static UIDMetadataId AccessibilityHintAttributeId;
+static UIDMetadataId AccessibilityTraitsAttributeId;
+static UIDMetadataId AccessibilityViewIsModalAttributeId;
+static UIDMetadataId ShouldGroupAccessibilityChildrenAttributeId;
+
+static UIDMetadataId AccessibilityTraitNoneAttributeId;
+static UIDMetadataId AccessibilityTraitButtonAttributeId;
+static UIDMetadataId AccessibilityTraitLinkAttributeId;
+static UIDMetadataId AccessibilityTraitImageAttributeId;
+static UIDMetadataId AccessibilityTraitSearchFieldAttributeId;
+static UIDMetadataId AccessibilityTraitKeyboardKeyAttributeId;
+static UIDMetadataId AccessibilityTraitStaticTextAttributeId;
+static UIDMetadataId AccessibilityTraitHeaderAttributeId;
+static UIDMetadataId AccessibilityTraitTabBarAttributeId;
+static UIDMetadataId AccessibilityTraitSummaryElementAttributeId;
+static UIDMetadataId AccessibilityTraitSelectedAttributeId;
+static UIDMetadataId AccessibilityTraitNotEnabledAttributeId;
+static UIDMetadataId AccessibilityTraitAdjustableAttributeId;
+static UIDMetadataId AccessibilityTraitAllowsDirectInteractionAttributeId;
+static UIDMetadataId AccessibilityTraitUpdatesFrequentlyAttributeId;
+static UIDMetadataId AccessibilityTraitCausesPageTurnAttributeId;
+static UIDMetadataId AccessibilityTraitPlaysSoundAttributeId;
+static UIDMetadataId AccessibilityTraitStartsMediaSessionAttributeId;
+
 FB_LINKABLE(UIView_UIDDescriptor)
 @implementation UIView (UIDDescriptor)
 
-- (NSUInteger)UID_identifier {
-  return [self hash];
+- (NSString*)UID_identifier {
+  return [NSString stringWithFormat:@"%lu", [self hash]];
 }
 
 - (nonnull NSString*)UID_name {
@@ -25,63 +82,11 @@ FB_LINKABLE(UIView_UIDDescriptor)
 }
 
 - (void)UID_aggregateAttributes:(nonnull UIDMutableAttributes*)attributes {
-  static UIDMetadataId UIViewAttributeId;
-  static UIDMetadataId FrameAttributeId;
-  static UIDMetadataId BoundsAttributeId;
-  static UIDMetadataId CenterAttributeId;
-  static UIDMetadataId AnchorPointAttributeId;
-  static UIDMetadataId SafeAreaInsetsAttributeId;
-  static UIDMetadataId ClipsToBoundsAttributeId;
-  static UIDMetadataId HiddenAttributeId;
-  static UIDMetadataId AlphaAttributeId;
-  static UIDMetadataId OpaqueAttributeId;
-  static UIDMetadataId ClearContextBeforeDrawingAttributeId;
-  static UIDMetadataId BackgroundColorAttributeId;
-  static UIDMetadataId TintColorAttributeId;
-  static UIDMetadataId TagAttributeId;
-
-  static UIDMetadataId CALayerAttributeId;
-  static UIDMetadataId CALayerShadowColorAttributeId;
-  static UIDMetadataId CALayerShadowOpacityAttributeId;
-  static UIDMetadataId CALayerShadowRadiusAttributeId;
-  static UIDMetadataId CALayerShadowOffsetAttributeId;
-  static UIDMetadataId CALayerBackgroundColorAttributeId;
-  static UIDMetadataId CALayerBorderColorAttributeId;
-  static UIDMetadataId CALayerBorderWidthAttributeId;
-  static UIDMetadataId CALayerCornerRadiusAttributeId;
-  static UIDMetadataId CALayerMasksToBoundsAttributeId;
-
-  static UIDMetadataId AccessibilityAttributeId;
-  static UIDMetadataId IsAccessibilityElementAttributeId;
-  static UIDMetadataId AccessibilityLabelAttributeId;
-  static UIDMetadataId AccessibilityIdentifierAttributeId;
-  static UIDMetadataId AccessibilityValueAttributeId;
-  static UIDMetadataId AccessibilityHintAttributeId;
-  static UIDMetadataId AccessibilityTraitsAttributeId;
-  static UIDMetadataId AccessibilityViewIsModalAttributeId;
-  static UIDMetadataId ShouldGroupAccessibilityChildrenAttributeId;
-
-  static UIDMetadataId AccessibilityTraitNoneAttributeId;
-  static UIDMetadataId AccessibilityTraitButtonAttributeId;
-  static UIDMetadataId AccessibilityTraitLinkAttributeId;
-  static UIDMetadataId AccessibilityTraitImageAttributeId;
-  static UIDMetadataId AccessibilityTraitSearchFieldAttributeId;
-  static UIDMetadataId AccessibilityTraitKeyboardKeyAttributeId;
-  static UIDMetadataId AccessibilityTraitStaticTextAttributeId;
-  static UIDMetadataId AccessibilityTraitHeaderAttributeId;
-  static UIDMetadataId AccessibilityTraitTabBarAttributeId;
-  static UIDMetadataId AccessibilityTraitSummaryElementAttributeId;
-  static UIDMetadataId AccessibilityTraitSelectedAttributeId;
-  static UIDMetadataId AccessibilityTraitNotEnabledAttributeId;
-  static UIDMetadataId AccessibilityTraitAdjustableAttributeId;
-  static UIDMetadataId AccessibilityTraitAllowsDirectInteractionAttributeId;
-  static UIDMetadataId AccessibilityTraitUpdatesFrequentlyAttributeId;
-  static UIDMetadataId AccessibilityTraitCausesPageTurnAttributeId;
-  static UIDMetadataId AccessibilityTraitPlaysSoundAttributeId;
-  static UIDMetadataId AccessibilityTraitStartsMediaSessionAttributeId;
-
   static dispatch_once_t onceToken;
   dispatch_once(&onceToken, ^{
+    AddressAttributeId = [[UIDMetadataRegister shared]
+        registerMetadataWithType:UIDEBUGGER_METADATA_TYPE_ATTRIBUTE
+                            name:@"Address"];
     UIViewAttributeId = [[UIDMetadataRegister shared]
         registerMetadataWithType:UIDEBUGGER_METADATA_TYPE_ATTRIBUTE
                             name:@"UIView"];
@@ -118,7 +123,7 @@ FB_LINKABLE(UIView_UIDDescriptor)
     HiddenAttributeId = [[UIDMetadataRegister shared]
         registerMetadataWithType:UIDEBUGGER_METADATA_TYPE_ATTRIBUTE
                             name:@"hidden"
-                       isMutable:false
+                       isMutable:true
                        definedBy:UIViewAttributeId];
     AlphaAttributeId = [[UIDMetadataRegister shared]
         registerMetadataWithType:UIDEBUGGER_METADATA_TYPE_ATTRIBUTE
@@ -344,6 +349,11 @@ FB_LINKABLE(UIView_UIDDescriptor)
 
   NSMutableDictionary* viewAttributes = [NSMutableDictionary new];
 
+  [viewAttributes
+      setObject:[UIDInspectableText
+                    fromText:[NSString stringWithFormat:@"%p", self]]
+         forKey:AddressAttributeId];
+
   [viewAttributes setObject:[UIDInspectableBounds fromRect:self.frame]
                      forKey:FrameAttributeId];
   [viewAttributes setObject:[UIDInspectableBounds fromRect:self.bounds]
@@ -370,7 +380,11 @@ FB_LINKABLE(UIView_UIDDescriptor)
   [viewAttributes setObject:[UIDInspectableBoolean
                                 fromBoolean:self.clearsContextBeforeDrawing]
                      forKey:ClearContextBeforeDrawingAttributeId];
+/* @cwt-override FIXME[T168581563]: -Wnullable-to-nonnull-conversion */
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wnullable-to-nonnull-conversion"
   [viewAttributes setObject:[UIDInspectableColor fromColor:self.backgroundColor]
+#pragma clang diagnostic pop
                      forKey:BackgroundColorAttributeId];
   [viewAttributes setObject:[UIDInspectableColor fromColor:self.tintColor]
                      forKey:TintColorAttributeId];
@@ -384,7 +398,11 @@ FB_LINKABLE(UIView_UIDDescriptor)
 
   [layerAttributes
       setObject:[UIDInspectableColor
+/* @cwt-override FIXME[T168581563]: -Wnullable-to-nonnull-conversion */
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wnullable-to-nonnull-conversion"
                     fromColor:[UIColor colorWithCGColor:self.layer.shadowColor]]
+#pragma clang diagnostic pop
          forKey:CALayerShadowColorAttributeId];
   [layerAttributes
       setObject:[UIDInspectableNumber fromCGFloat:self.layer.shadowOpacity]
@@ -398,11 +416,19 @@ FB_LINKABLE(UIView_UIDDescriptor)
   [layerAttributes
       setObject:[UIDInspectableColor
                     fromColor:[UIColor
+/* @cwt-override FIXME[T168581563]: -Wnullable-to-nonnull-conversion */
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wnullable-to-nonnull-conversion"
                                   colorWithCGColor:self.layer.backgroundColor]]
+#pragma clang diagnostic pop
          forKey:CALayerBackgroundColorAttributeId];
   [layerAttributes
       setObject:[UIDInspectableColor
+/* @cwt-override FIXME[T168581563]: -Wnullable-to-nonnull-conversion */
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wnullable-to-nonnull-conversion"
                     fromColor:[UIColor colorWithCGColor:self.layer.borderColor]]
+#pragma clang diagnostic pop
          forKey:CALayerBorderColorAttributeId];
   [layerAttributes
       setObject:[UIDInspectableNumber fromCGFloat:self.layer.borderWidth]
@@ -423,16 +449,32 @@ FB_LINKABLE(UIView_UIDDescriptor)
       setObject:[UIDInspectableBoolean fromBoolean:self.isAccessibilityElement]
          forKey:IsAccessibilityElementAttributeId];
   [accessibilityAttributes
+/* @cwt-override FIXME[T168581563]: -Wnullable-to-nonnull-conversion */
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wnullable-to-nonnull-conversion"
       setObject:[UIDInspectableText fromText:self.accessibilityLabel]
+#pragma clang diagnostic pop
          forKey:AccessibilityLabelAttributeId];
   [accessibilityAttributes
+/* @cwt-override FIXME[T168581563]: -Wnullable-to-nonnull-conversion */
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wnullable-to-nonnull-conversion"
       setObject:[UIDInspectableText fromText:self.accessibilityIdentifier]
+#pragma clang diagnostic pop
          forKey:AccessibilityIdentifierAttributeId];
   [accessibilityAttributes
+/* @cwt-override FIXME[T168581563]: -Wnullable-to-nonnull-conversion */
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wnullable-to-nonnull-conversion"
       setObject:[UIDInspectableText fromText:self.accessibilityValue]
+#pragma clang diagnostic pop
          forKey:AccessibilityValueAttributeId];
   [accessibilityAttributes
+/* @cwt-override FIXME[T168581563]: -Wnullable-to-nonnull-conversion */
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wnullable-to-nonnull-conversion"
       setObject:[UIDInspectableText fromText:self.accessibilityHint]
+#pragma clang diagnostic pop
          forKey:AccessibilityHintAttributeId];
   [accessibilityAttributes
       setObject:[UIDInspectableBoolean
@@ -542,6 +584,14 @@ FB_LINKABLE(UIView_UIDDescriptor)
 
 - (NSArray<id<NSObject>>*)UID_children {
   NSMutableArray* children = [NSMutableArray new];
+  // If the current view is hidden, do not include its children.
+  // Reason is, hiding a view with subviews has the effect of hiding those
+  // subviews and any view descendants they might have. This effect is
+  // implicit and does not alter the hidden state of the receiver’s descendants.
+  // So, those views will appear as visible on Desktop even though they are not.
+  if (self.isHidden) {
+    return children;
+  }
 
   // Use UIViewControllers for children which responds to a different
   // view controller than their parent.
@@ -549,12 +599,14 @@ FB_LINKABLE(UIView_UIDDescriptor)
     BOOL isController =
         [child.nextResponder isKindOfClass:[UIViewController class]];
 
-    if (!child.isHidden) {
-      if (isController && child.nextResponder != self.nextResponder) {
-        [children addObject:child.nextResponder];
-      } else {
-        [children addObject:child];
-      }
+    if (isController && child.nextResponder != self.nextResponder) {
+/* @cwt-override FIXME[T168581563]: -Wnullable-to-nonnull-conversion */
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wnullable-to-nonnull-conversion"
+      [children addObject:child.nextResponder];
+#pragma clang diagnostic pop
+    } else {
+      [children addObject:child];
     }
   }
 
@@ -567,17 +619,23 @@ FB_LINKABLE(UIView_UIDDescriptor)
   then return this instead.
  */
 - (id<NSObject>)UID_activeChild {
+  if (self.isHidden) {
+    return nil;
+  }
+
   if (self.subviews && self.subviews.count > 0) {
     UIView* activeChild = [self.subviews lastObject];
     BOOL isController =
         [activeChild.nextResponder isKindOfClass:[UIViewController class]];
 
-    if (!activeChild.isHidden) {
-      if (isController && activeChild.nextResponder != self.nextResponder) {
-        return activeChild.nextResponder;
-      }
-      return activeChild;
+    if (isController && activeChild.nextResponder != self.nextResponder) {
+/* @cwt-override FIXME[T168581563]: -Wnullable-to-nonnull-conversion */
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wnullable-to-nonnull-conversion"
+      return activeChild.nextResponder;
+#pragma clang diagnostic pop
     }
+    return activeChild;
   }
   return nil;
 }
@@ -599,6 +657,17 @@ FB_LINKABLE(UIView_UIDDescriptor)
   }
 
   return [UIDBounds fromRect:self.frame];
+}
+
+- (void)UID_aggregateEditAttributeWithValue:(id)value
+                               metadataPath:
+                                   (NSArray<UIDMetadataId>*)metadataPath
+                                       hint:(UIDCompoundTypeHint)hint {
+  UIDMetadataId lastMetadataId = metadataPath.lastObject;
+
+  if (lastMetadataId == HiddenAttributeId) {
+    self.hidden = [value boolValue];
+  }
 }
 
 @end
